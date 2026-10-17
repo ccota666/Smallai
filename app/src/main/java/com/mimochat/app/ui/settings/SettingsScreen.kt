@@ -1,0 +1,287 @@
+package com.mimochat.app.ui.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.mimochat.app.MiMoApplication
+import com.mimochat.app.data.AppSettings
+import com.mimochat.app.ui.AppIconButton
+import com.mimochat.app.ui.AppSlider
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(onBack: () -> Unit) {
+    val app = LocalContext.current.applicationContext as MiMoApplication
+    val vm: SettingsViewModel = viewModel(factory = viewModelFactory {
+        initializer { SettingsViewModel(app.settingsRepository) }
+    })
+    val settings by vm.settings.collectAsState(initial = AppSettings())
+
+    var apiKey by remember { mutableStateOf(settings.apiKey) }
+    var baseUrl by remember { mutableStateOf(settings.baseUrl) }
+    var models by remember { mutableStateOf(settings.models) }
+    var systemPrompt by remember { mutableStateOf(settings.systemPrompt) }
+
+    LaunchedEffect(settings.apiKey) { apiKey = settings.apiKey }
+    LaunchedEffect(settings.baseUrl) { baseUrl = settings.baseUrl }
+    LaunchedEffect(settings.models) { models = settings.models }
+    LaunchedEffect(settings.systemPrompt) { systemPrompt = settings.systemPrompt }
+
+    val modelList = models.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("设置") },
+                navigationIcon = {
+                    AppIconButton(onClick = onBack, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            SectionTitle("API 连接")
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it; vm.setApiKey(it) },
+                label = { Text("API Key") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = { baseUrl = it; vm.setBaseUrl(it) },
+                label = { Text("Base URL") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "Key 获取：platform.xiaomimimo.com → API Keys（按量付费 sk- 或 Token Plan tp-/ttp-）",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            SectionTitle("模型")
+            OutlinedTextField(
+                value = models,
+                onValueChange = { models = it; vm.setModels(it) },
+                label = { Text("模型列表（逗号分隔）") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "新模型上线后在此追加 ID 即可，无需改代码。",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ModelDropdown(
+                models = modelList,
+                current = settings.model,
+                onSelect = { vm.setModel(it) }
+            )
+
+            SectionTitle("外观")
+            ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }
+            FontSizeSlider(settings.fontSize) { vm.setFontSize(it) }
+            BoldColorPicker(settings.boldColor) { vm.setBoldColor(it) }
+
+            SectionTitle("上下文")
+            ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
+
+            SectionTitle("高级")
+            OutlinedTextField(
+                value = systemPrompt,
+                onValueChange = { systemPrompt = it; vm.setSystemPrompt(it) },
+                label = { Text("系统提示词（可选）") },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+}
+
+@Composable
+private fun ModelDropdown(models: List<String>, current: String, onSelect: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedTextField(
+            value = current,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("默认模型") },
+            trailingIcon = { Icon(Icons.Rounded.KeyboardArrowDown, null) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Box(Modifier.matchParentSize().clickable { expanded = true })
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            models.forEach { m ->
+                DropdownMenuItem(text = { Text(m) }, onClick = { onSelect(m); expanded = false })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeSelector(current: Int, onSelect: (Int) -> Unit) {
+    val options = listOf(0 to "浅色", 1 to "深色", 2 to "跟随系统")
+    Column {
+        options.forEach { (v, label) ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                RadioButton(selected = current == v, onClick = { onSelect(v) })
+                Spacer(Modifier.width(4.dp))
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+/** 加粗/关键词颜色：预设色板 + 跟随主题 */
+@Composable
+private fun BoldColorPicker(current: Int, onChange: (Int) -> Unit) {
+    val presets = listOf(
+        0 to "主题色",
+        android.graphics.Color.parseColor("#E67E22") to "橙",
+        android.graphics.Color.parseColor("#C0392B") to "红",
+        android.graphics.Color.parseColor("#2980B9") to "蓝",
+        android.graphics.Color.parseColor("#27AE60") to "绿",
+        android.graphics.Color.parseColor("#8E44AD") to "紫",
+        android.graphics.Color.parseColor("#D35400") to "赤",
+        android.graphics.Color.parseColor("#16A085") to "青"
+    )
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Text("加粗文字颜色", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+            for ((color, label) in presets) {
+                val selected = current == color
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (color == 0) MaterialTheme.colorScheme.surfaceVariant
+                                else Color(color)
+                            )
+                            .then(
+                                if (selected) Modifier.border(
+                                    2.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(10.dp)
+                                ) else Modifier
+                            )
+                            .clickable { onChange(color) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (color == 0) {
+                            Text("Aa", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    Text(label, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FontSizeSlider(current: Float, onChange: (Float) -> Unit) {
+    var value by remember(current) { mutableFloatStateOf(current) }
+    Column {
+        Text("字体大小：${value.toInt()}sp", style = MaterialTheme.typography.bodyMedium)
+        AppSlider(
+            value = value,
+            onValueChange = { value = it },
+            onValueChangeFinished = { onChange(value) },
+            valueRange = 12f..26f,
+            steps = 13
+        )
+    }
+}
+
+@Composable
+private fun ContextLimitSlider(current: Int, onChange: (Int) -> Unit) {
+    var value by remember(current) { mutableIntStateOf(current) }
+    Column {
+        Text("携带历史消息条数：$value", style = MaterialTheme.typography.bodyMedium)
+        AppSlider(
+            value = value.toFloat(),
+            onValueChange = { value = it.toInt() },
+            onValueChangeFinished = { onChange(value) },
+            valueRange = 4f..200f,
+            steps = 195
+        )
+        Text(
+            "越大越能记住上下文，但消耗更多 token。MiMo 支持 1M 上下文窗口。",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
