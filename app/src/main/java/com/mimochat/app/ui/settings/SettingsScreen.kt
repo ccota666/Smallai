@@ -58,6 +58,11 @@ import com.mimochat.app.ui.AppSlider
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
+    var showScreenQA by remember { mutableStateOf(false) }
+    if (showScreenQA) {
+        com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
+        return
+    }
     val app = LocalContext.current.applicationContext as MiMoApplication
     val vm: SettingsViewModel = viewModel(factory = viewModelFactory {
         initializer { SettingsViewModel(app.settingsRepository) }
@@ -133,6 +138,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 current = settings.model,
                 onSelect = { vm.setModel(it) }
             )
+
+            SectionTitle("工具")
+            androidx.compose.material3.OutlinedButton(
+                onClick = { showScreenQA = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("屏幕问答 · 悬浮球截屏提问")
+            }
 
             SectionTitle("外观")
             ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }

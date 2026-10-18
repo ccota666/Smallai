@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mimochat.app.data.AppSettings
+import com.mimochat.app.ui.screenqa.ScreenQABridge
 import com.mimochat.app.ui.chat.ChatScreen
 import com.mimochat.app.ui.conversations.ConversationListScreen
 import com.mimochat.app.ui.settings.SettingsScreen
@@ -20,7 +21,13 @@ import com.mimochat.app.ui.theme.MiMoChatTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intent?.getStringExtra("screen_qa_path")?.let {
+            ScreenQABridge.pendingImagePath = it
+        }
         enableEdgeToEdge()
+        intent?.getStringExtra("screen_qa_path")?.let {
+            ScreenQABridge.pendingImagePath = it
+        }
         setContent {
             val app = application as MiMoApplication
             val settings by app.settingsRepository.settings.collectAsState(initial = AppSettings())

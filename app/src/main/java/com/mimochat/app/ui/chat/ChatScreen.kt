@@ -183,6 +183,18 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
 
     var inputText by remember { mutableStateOf("") }
     var attachments by remember { mutableStateOf<List<Attachment>>(emptyList()) }
+    // 屏幕问答手动模式：悬浮球截的图自动挂到输入框
+    LaunchedEffect(conversationId) {
+        com.mimochat.app.ui.screenqa.ScreenQABridge.pendingImagePath?.let { path ->
+            com.mimochat.app.ui.screenqa.ScreenQABridge.pendingImagePath = null
+            val f = File(path)
+            if (f.exists()) {
+                attachments = attachments + Attachment(
+                    type = "image", path = path, name = f.name
+                )
+            }
+        }
+    }
     var editingImagePath by remember { mutableStateOf<String?>(null) }
 
     editingImagePath?.let { path ->
