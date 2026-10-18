@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +69,7 @@ import java.util.Locale
 @Composable
 fun ConversationListScreen(
     onOpenChat: (Long) -> Unit,
+    onBackToChat: () -> Unit = {},
     onOpenChatMessage: (Long, Long) -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -79,6 +81,8 @@ fun ConversationListScreen(
     val firstUser by vm.firstUser.collectAsState(initial = emptyList())
     val firstAssistant by vm.firstAssistant.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    // 对话列表：系统返回 = 回到最近打开的对话，而不是退出 App
+    BackHandler { onBackToChat() }
 
     var selectionMode by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(setOf<Long>()) }
@@ -344,21 +348,25 @@ private fun ConversationItem(
                 Spacer(Modifier.width(8.dp))
             }
             Column(Modifier.weight(1f)) {
-                // 两行：上行首条用户问题（大字）；下行=问题续行，或问题一行时 AI 回答
-                val question = previewQuestion(conv.id) ?: conv.title
+                // 大字=标题（重命名后就是名称，否则等于首问）；小字=补充信息
+                val question = previewQuestion(conv.id) ?: ""
                 val answer = previewAnswer(conv.id).orEmpty()
+                val title = conv.title
+                val renamed = question.isNotBlank() && title.isNotBlank() && title != question
+                val big = if (renamed) title else (if (question.isNotBlank()) question else title)
+                val small = if (renamed) question else answer
                 val maxBig = 18
-                if (question.length <= maxBig) {
+                if (big.length <= maxBig) {
                     Text(
-                        question,
+                        big,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (answer.isNotBlank()) {
+                    if (small.isNotBlank()) {
                         Text(
-                            answer,
+                            small,
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.onSurfaceVariant,
                             maxLines = 1,
@@ -368,20 +376,20 @@ private fun ConversationItem(
                 } else {
                     var cut = maxBig
                     for (k in maxBig downTo 2) {
-                        val c = question[k]
+                        val c = big[k]
                         if (c == ' ' || c == '，' || c == '、' || c == '。' ||
                             c == ',' || c == '.' || c == '—' || c == '-'
                         ) { cut = k; break }
                     }
                     Text(
-                        question.take(cut),
+                        big.take(cut),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        question.drop(cut).trimStart(),
+                        big.drop(cut).trimStart().ifBlank { small },
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                         maxLines = 1,

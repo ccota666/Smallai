@@ -6,6 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -25,20 +28,49 @@ class MainActivity : ComponentActivity() {
             ScreenQABridge.pendingImagePath = it
         }
         enableEdgeToEdge()
-        intent?.getStringExtra("screen_qa_path")?.let {
-            ScreenQABridge.pendingImagePath = it
-        }
         setContent {
             val app = application as MiMoApplication
             val settings by app.settingsRepository.settings.collectAsState(initial = AppSettings())
             MiMoChatTheme(settings) {
                 val nav = rememberNavController()
-                NavHost(navController = nav, startDestination = "conversations") {
+                // 记住最近打开的对话：从列表返回时回到这里
+                var lastChatId by remember { mutableLongStateOf(-1L) }
+
+                NavHost(navController = nav, startDestination = "boot") {
+                    // 启动即进「新对话」，不先看列表
+                    composable("boot") {
+                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                            val id = app.chatRepository.createConversation(settings.model)
+                            lastChatId = id
+                            nav.navigate("chat/$id") {
+                                popUpTo("boot") { inclusive = true }
+                            }
+                        }
+                    }
                     composable("conversations") {
                         ConversationListScreen(
-                            onOpenChat = { id -> nav.navigate("chat/$id") },
-                            onOpenChatMessage = { convId, msgId -> nav.navigate("chat/$convId?msg=$msgId") },
-                            onOpenSettings = { nav.navigate("settings") }
+                            onOpenChat = { id ->
+                                lastChatId = id
+                                nav.navigate("chat/$id")
+                            },
+                            onOpenChatMessage = { convId, msgId ->
+                                lastChatId = convId
+                                nav.navigate("chat/$convId?msg=$msgId")
+                            },
+                            onOpenSettings = { nav.navigate("settings") },
+                            onBackToChat = {
+                                // 返回最近打开的一次对话；若没有则新建
+                                val id = lastChatId
+                                if (id > 0) {
+                                    nav.navigate("chat/$id") {
+                                        popUpTo("conversations") { inclusive = true }
+                                    }
+                                } else {
+                                    nav.navigate("boot") {
+                                        popUpTo("conversations") { inclusive = true }
+                                    }
+                                }
+                            }
                         )
                     }
                     composable(
@@ -50,7 +82,12 @@ class MainActivity : ComponentActivity() {
                     ) { entry ->
                         val convId = entry.arguments?.getLong("conversationId") ?: -1L
                         val msgId = entry.arguments?.getLong("messageId") ?: -1L
-                        ChatScreen(conversationId = convId, targetMessageId = msgId, onBack = { nav.popBackStack() })
+                        lastChatId = convId
+                        ChatScreen(
+                            conversationId = convId,
+                            targetMessageId = msgId,
+                            onBack = { nav.navigate("conversations") }
+                        )
                     }
                     composable("settings") {
                         SettingsScreen(onBack = { nav.popBackStack() })

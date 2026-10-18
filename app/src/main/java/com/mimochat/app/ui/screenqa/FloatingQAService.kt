@@ -215,7 +215,14 @@ class FloatingQAService : Service() {
                 }
                 handler.post {
                     try {
-                        if (cfg.autoMode && cfg.plans.isNotEmpty()) {
+                        // 只保留自动模式：点球=截屏+按方案问答+通知
+                        if (cfg.plans.isEmpty()) {
+                            Toast.makeText(
+                                this@FloatingQAService,
+                                "还没有提问方案，请到设置 → 屏幕问答新建",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
                             val plan = cfg.plans.firstOrNull { it.id == cfg.activePlanId }
                                 ?: cfg.plans.first()
                             Toast.makeText(this@FloatingQAService, "屏幕问答：截屏中…", Toast.LENGTH_SHORT).show()
@@ -228,14 +235,6 @@ class FloatingQAService : Service() {
                                 }
                                 autoAnswer(bmp, plan.prompt, plan.quality, plan.model)
                             }
-                        } else if (cfg.autoMode && cfg.plans.isEmpty()) {
-                            Toast.makeText(
-                                this@FloatingQAService,
-                                "自动模式已开，但还没有方案，请到设置里新建",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            openQaWindow()
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("FloatingQAService", "ball click failed", e)

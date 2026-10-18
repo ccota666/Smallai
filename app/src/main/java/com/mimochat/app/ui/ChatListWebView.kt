@@ -277,11 +277,14 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .mathpad,#fs .mmpad{padding:10px;overflow-x:auto;}
 #fs button{border:1px solid $borderC;background:transparent;color:$fg;
   border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;}
-.reason{margin:8px 0;border-left:3px solid $accent-color;padding:7px 12px;
-  background:$thinkBg;border-radius:0 10px 10px 0;font-size:0.92em;color:$muted;}
-.reason summary{cursor:pointer;user-select:none;}
-.reason pre{white-space:pre-wrap;margin:6px 0 0;font-family:inherit;
-  background:transparent;padding:0;}
+.reason{margin:10px 0;border:1px solid $borderC;border-radius:12px;
+  background:${if (dark) "#2A2A2A" else "#FFFFFF"};font-size:0.92em;overflow:hidden;}
+.reason summary{cursor:pointer;user-select:none;padding:9px 12px;
+  color:$muted;font-size:12.5px;}
+.reason summary::marker{color:$muted;}
+.reason pre{white-space:pre-wrap;margin:0;padding:10px 12px 12px;
+  font-family:inherit;color:$muted;
+  border-top:1px solid $borderC;background:${if (dark) "#2A2A2A" else "#FFFFFF"};}
 .cites{margin-top:10px;padding-top:7px;border-top:1px solid $borderC;}
 .cites summary{cursor:pointer;font-size:12px;color:$muted;user-select:none;}
 .cites .t{font-size:12px;color:$muted;}
@@ -321,6 +324,19 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   </div>
   <div class="fs-body" id="fsBody"></div>
 </div>
+<div id="confirmBox" style="display:none;position:fixed;inset:0;z-index:10000;
+  background:rgba(0,0,0,0.35);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:18px 16px;width:78%;max-width:320px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);">
+    <div id="confirmText" style="font-size:15px;color:#1C1C1E;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="confirmCancel" style="border:1px solid #E2E2E7;background:transparent;
+        color:#6E6E73;border-radius:10px;padding:8px 16px;font-size:13px;">取消</button>
+      <button id="confirmOk" style="border:none;background:#2F6FED;color:#fff;
+        border-radius:10px;padding:8px 16px;font-size:13px;">确定</button>
+    </div>
+  </div>
+</div>
 <script>
 var D = String.fromCharCode(36);
 var fsScale = 1;
@@ -331,6 +347,22 @@ function esc(s){
 }
 
 var fsLandscape = false;
+function askConfirm(msg, onYes){
+  var box = document.getElementById('confirmBox');
+  var t = document.getElementById('confirmText');
+  var ok = document.getElementById('confirmOk');
+  var no = document.getElementById('confirmCancel');
+  if (!box) { if (onYes) onYes(); return; }
+  t.textContent = msg;
+  box.style.display = 'flex';
+  function done(yes){
+    box.style.display = 'none';
+    ok.onclick = null; no.onclick = null;
+    if (yes && onYes) onYes();
+  }
+  ok.onclick = function(){ done(true); };
+  no.onclick = function(){ done(false); };
+}
 function openFs(title, html){
   fsLandscape = false;
   document.getElementById('fsTtl').textContent = title;
@@ -819,8 +851,8 @@ function msgHtml(m){
   if (!isUser && !m.pending && m.content){
     h += '<div class="actions">'
       + '<button onclick="Android.onAction(&quot;copy&quot;,' + m.id + ')">复制</button>'
-      + '<button onclick="Android.onAction(&quot;regen&quot;,' + m.id + ')">重新生成</button>'
-      + '<button onclick="Android.onAction(&quot;delete&quot;,' + m.id + ')">删除</button>'
+      + '<button onclick="askConfirm(&quot;重新生成将覆盖当前回答？&quot;,function(){Android.onAction(&quot;regen&quot;,' + m.id + ')})">重新生成</button>'
+      + '<button onclick="askConfirm(&quot;删除这条问答？不可恢复&quot;,function(){Android.onAction(&quot;delete&quot;,' + m.id + ')})">删除</button>'
       + '</div>';
   }
   return h + '</div></div>';

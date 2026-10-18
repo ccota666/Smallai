@@ -17,6 +17,16 @@ interface ConversationDao {
     @Query("SELECT * FROM conversations ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<Conversation>>
 
+    /** 只带消息的会话（空会话不出现在列表） */
+    @Query(
+        """
+        SELECT * FROM conversations
+        WHERE id IN (SELECT DISTINCT conversationId FROM messages)
+        ORDER BY updatedAt DESC
+        """
+    )
+    fun observeAllWithMessages(): Flow<List<Conversation>>
+
     @Query("SELECT * FROM conversations WHERE id = :id")
     fun observeById(id: Long): Flow<Conversation?>
 

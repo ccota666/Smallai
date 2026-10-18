@@ -15,7 +15,7 @@ class ChatRepository(
 ) {
     private val api = MiMoApi()
 
-    fun observeConversations() = db.conversationDao().observeAll()
+    fun observeConversations() = db.conversationDao().observeAllWithMessages()
     fun observeConversation(id: Long) = db.conversationDao().observeById(id)
     fun observeMessages(convId: Long) = db.messageDao().observeByConversation(convId)
 
