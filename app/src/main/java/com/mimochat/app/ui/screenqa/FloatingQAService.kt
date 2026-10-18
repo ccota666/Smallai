@@ -53,7 +53,8 @@ import java.io.File
 class FloatingQAService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "screen_qa"
+        const val CHANNEL_ID = "screen_qa"          // 前台服务（低）
+        const val CHANNEL_ANSWER = "screen_qa_answer" // 结果（高优先级，独立显示）
         const val NOTIF_FOREGROUND = 1001
         const val NOTIF_ANSWER = 1002
         const val NOTIF_STATUS = 1003
@@ -129,8 +130,17 @@ class FloatingQAService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "屏幕问答", NotificationManager.IMPORTANCE_DEFAULT)
-                    .apply { description = "屏幕问答状态与结果" }
+                NotificationChannel(CHANNEL_ID, "屏幕问答服务", NotificationManager.IMPORTANCE_LOW)
+                    .apply { description = "悬浮球前台服务" }
+            )
+            // 结果走独立高优先级通道，否则会被前台服务通知压在下面，
+            // 只有服务退出后才「蹦出来」
+            nm.createNotificationChannel(
+                NotificationChannel(CHANNEL_ANSWER, "屏幕问答结果", NotificationManager.IMPORTANCE_HIGH)
+                    .apply {
+                        description = "自动问答的答案"
+                        enableVibration(true)
+                    }
             )
         }
     }
@@ -381,7 +391,9 @@ class FloatingQAService : Service() {
         )
         val id = if (ongoing) NOTIF_STATUS else NOTIF_ANSWER
         val title = if (ongoing) "屏幕问答" else "屏幕问答结果"
-        val b = NotificationCompat.Builder(this, CHANNEL_ID)
+        // 结果用高优通道，不用前台服务通道
+        val ch = if (ongoing) CHANNEL_ID else CHANNEL_ANSWER
+        val b = NotificationCompat.Builder(this, ch)
             .setContentTitle(title)
             .setContentText(text.take(120))
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
