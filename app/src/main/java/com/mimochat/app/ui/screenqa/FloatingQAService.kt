@@ -389,38 +389,59 @@ class FloatingQAService : Service() {
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val id = if (ongoing) NOTIF_STATUS else NOTIF_ANSWER
-        val title = if (ongoing) "屏幕问答" else "屏幕问答结果"
-        // 结果用高优通道，不用前台服务通道
-        val ch = if (ongoing) CHANNEL_ID else CHANNEL_ANSWER
-        val b = NotificationCompat.Builder(this, ch)
-            .setContentTitle(title)
-            .setContentText(text.take(120))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setSmallIcon(
-                if (ongoing) android.R.drawable.stat_notify_sync
-                else android.R.drawable.ic_dialog_info
-            )
-            .setContentIntent(open)
-            .setAutoCancel(!ongoing)
-            .setOngoing(ongoing)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-        if (ongoing) b.setProgress(0, 0, true)
-        try {
-            if (!ongoing) {
-                // 出结果：先收进度，再挂结果
-                runCatching { nm.cancel(NOTIF_STATUS) }
+
+        if (ongoing) {
+            // 进度：只更新前台服务那条常驻通知，用户一定看得见
+            try {
+                val fg = NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("屏幕问答")
+                    .setContentText(text.take(80))
+                    .setSmallIcon(android.R.drawable.stat_notify_sync)
+                    .setProgress(0, 0, true)
+                    .setOngoing(true)
+                    .build()
+                startForeground(NOTIF_FOREGROUND, fg)
+            } catch (e: Exception) {
+                android.util.Log.e("FloatingQAService", "fg update failed", e)
             }
-            nm.notify(id, b.build())
-        } catch (e: Exception) {
-            android.util.Log.e("FloatingQAService", "notify failed", e)
+            return
         }
-        // 最终结果必须 Toast，通知挂了也看得见
-        if (!ongoing) {
-            handler.post {
-                runCatching {
-                    Toast.makeText(this, "屏幕问答结果：${text.take(90)}", Toast.LENGTH_LONG).show()
-                }
+
+        // —— 最终结果 ——
+        // ① 直接把答案刷进前台服务通知（不依赖任何权限/通道，必显示）
+        try {
+            val fg = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("屏幕问答结果")
+                .setContentText(text.take(120))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(open)
+                .setOngoing(true)
+                .build()
+            startForeground(NOTIF_FOREGROUND, fg)
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingQAService", "fg answer failed", e)
+        }
+
+        // ② 再发一条独立高优通知（可点击、可划掉）
+        try {
+            val b = NotificationCompat.Builder(this, CHANNEL_ANSWER)
+                .setContentTitle("屏幕问答结果")
+                .setContentText(text.take(120))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+            nm.notify(NOTIF_ANSWER, b.build())
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingQAService", "answer notify failed", e)
+        }
+
+        // ③ Toast 兜底
+        handler.post {
+            runCatching {
+                Toast.makeText(this, "屏幕问答结果：${text.take(90)}", Toast.LENGTH_LONG).show()
             }
         }
     }

@@ -69,7 +69,8 @@ class FloatingQAWindow(
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                // ADJUST_NOTHING：键盘不重排窗口，从根上消灭闪烁
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
             }
             wm.addView(root, lp)
         } catch (e: Exception) {
@@ -222,13 +223,23 @@ class FloatingQAWindow(
             setPadding(dp(12), dp(10), dp(12), dp(10))
             isFocusable = true
             isFocusableInTouchMode = true
-            // 全屏窗体：直接用标准 IME，不需要 toggle hack
-            setOnFocusChangeListener { v, has ->
-                if (has) {
-                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
-                        as InputMethodManager
-                    imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+            // 只在用户点击时开一次键盘。
+            // 千万不要用 focus 监听去 show/hide：键盘弹出会引发失焦→再聚焦→再弹，即闪烁循环
+            var imeAsked = false
+            setOnTouchListener { v, event ->
+                if (event.action == MotionEvent.ACTION_UP) {
+                    v.requestFocus()
+                    if (!imeAsked) {
+                        imeAsked = true
+                        v.post {
+                            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                                as InputMethodManager
+                            @Suppress("DEPRECATION")
+                            imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                        }
+                    }
                 }
+                false
             }
         }
         card.addView(inputView, LinearLayout.LayoutParams(
