@@ -60,6 +60,7 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
@@ -94,6 +95,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -110,6 +112,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -440,6 +443,7 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
                 onRemoveAttachment = { attachments = attachments - it },
                 onEditImage = { path -> editingImagePath = path },
                 onPickFile = { fileLauncher.launch(arrayOf("*/*")) },
+                onVoiceInput = { Toast.makeText(context, "语音输入（MiMo ASR）即将接入", Toast.LENGTH_SHORT).show() },
                 onTakePhoto = {
                     try {
                         val dir = java.io.File(context.cacheDir, "camera").apply { mkdirs() }
@@ -457,6 +461,9 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
                     vm.send(inputText, attachments)
                     inputText = ""
                     attachments = emptyList()
+                    // 用户提问后恢复跟随流式输出
+                    followBottom = true
+                    webViewScrollToBottom = System.currentTimeMillis()
                 },
                 generating = generating,
                 onStop = { vm.stop() }
@@ -503,13 +510,15 @@ private fun ChatTopBar(
                     TextButton(
                         onClick = { modelMenuOpen = true },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 10.dp, vertical = 2.dp
+                            horizontal = 8.dp, vertical = 0.dp
                         ),
-                        modifier = Modifier.clip(RoundedCornerShape(AppDimens.shapePill))
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(AppDimens.shapePill))
+                            .height(32.dp)
                     ) {
                         Text(
-                            "切换模型",
-                            style = MaterialTheme.typography.labelSmall,
+                            currentModel,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1
                         )
@@ -1047,6 +1056,7 @@ private fun InputBar(
     onEditImage: (String) -> Unit,
     onPickFile: () -> Unit,
     onTakePhoto: () -> Unit = {},
+    onVoiceInput: () -> Unit = {},
     onSend: () -> Unit,
     generating: Boolean,
     onStop: () -> Unit
@@ -1100,16 +1110,22 @@ private fun InputBar(
                 Spacer(Modifier.height(6.dp))
             }
 
-            // 胶囊输入栏：附件 | 文本 | 发送/停止 —— 浮在透明底上，带阴影
+            // 胶囊输入栏：聚焦时附件/拍照/语音/发送 降到下一行
+            val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+            var inputFocused by remember { mutableStateOf(false) }
+            val focusModifier = Modifier.onFocusChanged { inputFocused = it.isFocused }
             Surface(
-                shape = RoundedCornerShape(AppDimens.shapePill),
+                shape = RoundedCornerShape(if (inputFocused) 18.dp else AppDimens.shapePill),
                 color = colors.surface,
                 shadowElevation = 10.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-            AppPillBackground(Modifier.fillMaxWidth(), containerColor = colors.surface) {
-                AppIconButton(onClick = onPickFile, icon = Icons.Rounded.AttachFile, contentDescription = "添加文件")
-                AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
+            Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!inputFocused) {
+                    AppIconButton(onClick = onPickFile, icon = Icons.Rounded.AttachFile, contentDescription = "添加文件")
+                    AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
+                }
                 BasicTextField(
                     value = text,
                     onValueChange = onTextChange,
@@ -1120,7 +1136,8 @@ private fun InputBar(
                     cursorBrush = SolidColor(colors.primary),
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 4.dp)
+                        .then(focusModifier),
                     decorationBox = { innerTextField ->
                         Box(Modifier.padding(vertical = 8.dp)) {
                             if (text.isEmpty()) {
@@ -1134,21 +1151,51 @@ private fun InputBar(
                         }
                     }
                 )
-                if (generating) {
-                    AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
-                } else {
-                    AppFilledIconButton(
-                        onClick = onSend,
-                        icon = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = "发送",
-                        enabled = text.isNotBlank() || attachments.isNotEmpty(),
-                        modifier = Modifier.padding(2.dp)
-                    )
+                if (!inputFocused) {
+                    if (generating) {
+                        AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
+                    } else {
+                        AppFilledIconButton(
+                            onClick = onSend,
+                            icon = Icons.AutoMirrored.Rounded.Send,
+                            contentDescription = "发送",
+                            enabled = text.isNotBlank() || attachments.isNotEmpty(),
+                            modifier = Modifier.padding(2.dp)
+                        )
+                    }
                 }
             }
+            // 第二行：聚焦时显示功能按钮
+            if (inputFocused) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AppIconButton(onClick = onPickFile, icon = Icons.Rounded.AttachFile, contentDescription = "添加文件")
+                    AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
+                    AppIconButton(
+                        onClick = onVoiceInput,
+                        icon = Icons.Rounded.Mic,
+                        contentDescription = "语音输入"
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (generating) {
+                        AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
+                    } else {
+                        AppFilledIconButton(
+                            onClick = onSend,
+                            icon = Icons.AutoMirrored.Rounded.Send,
+                            contentDescription = "发送",
+                            enabled = text.isNotBlank() || attachments.isNotEmpty(),
+                            modifier = Modifier.padding(2.dp)
+                        )
+                    }
+                }
+            }
+            } // Column
+            } // Surface
         }
     }
-}
 
 
 /** 把消息列表序列化给 ChatListWebView */

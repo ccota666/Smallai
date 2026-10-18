@@ -22,7 +22,9 @@ data class QAPlan(
     val name: String,
     val prompt: String,
     /** JPEG 压缩率 10-100，同图片编辑的「压缩率」 */
-    val quality: Int = 85
+    val quality: Int = 85,
+    /** 该方案使用的模型，空则用全局默认 */
+    val model: String = ""
 )
 
 data class ScreenQAConfig(
@@ -90,6 +92,7 @@ class ScreenQARepository(private val context: Context) {
                     .put("name", p.name)
                     .put("prompt", p.prompt)
                     .put("quality", p.quality)
+                    .put("model", p.model)
             )
         }
         return arr.toString()
@@ -103,7 +106,8 @@ class ScreenQARepository(private val context: Context) {
                 id = o.optLong("id"),
                 name = o.optString("name", "未命名"),
                 prompt = o.optString("prompt"),
-                quality = o.optInt("quality", 85).coerceIn(10, 100)
+                quality = o.optInt("quality", 85).coerceIn(10, 100),
+                model = o.optString("model", "")
             )
         }
     }.getOrDefault(emptyList())

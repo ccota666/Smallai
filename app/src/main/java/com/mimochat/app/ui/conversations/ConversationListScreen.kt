@@ -128,6 +128,17 @@ fun ConversationListScreen(
                         )
                     } else {
                         AppIconButton(
+                            onClick = {
+                                scope.launch {
+                                    val id = vm.newConversation()
+                                    onOpenChat(id)
+                                }
+                            },
+                            icon = Icons.Rounded.Add,
+                            contentDescription = "新对话",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        AppIconButton(
                             onClick = { searchMode = true },
                             icon = Icons.Rounded.Search,
                             contentDescription = "搜索"
@@ -180,23 +191,6 @@ fun ConversationListScreen(
                     }
                 }
             } else {
-                Column(
-                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AppPrimaryButton(
-                        onClick = {
-                            scope.launch {
-                                val id = vm.newConversation()
-                                onOpenChat(id)
-                            }
-                        },
-                        text = "新对话",
-                        icon = Icons.Rounded.Add,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
                 LazyColumn(Modifier.weight(1f)) {
                     items(conversations, key = { it.id }) { conv ->
                         ConversationItem(
@@ -325,10 +319,10 @@ private fun ConversationItem(
                 Spacer(Modifier.width(8.dp))
             }
             Column(Modifier.weight(1f)) {
-                // 标题两行：第一行主字号，第二行小字续显（不再显示模型名）
+                // 标题两行：大字起头，小字接续排版（像同一句话换行，不是单独“结尾”）
                 val title = conv.title
                 val breakAt = 18
-                if (title.length <= breakAt + 2) {
+                if (title.length <= breakAt) {
                     Text(
                         title,
                         style = MaterialTheme.typography.bodyLarge,
@@ -337,16 +331,26 @@ private fun ConversationItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 } else {
+                    // 尽量在 breakAt 附近断词，避免生硬掐断
+                    var cut = breakAt
+                    if (cut < title.length) {
+                        for (k in breakAt downTo 2) {
+                            val c = title[k]
+                            if (c == ' ' || c == '，' || c == '、' || c == '。' ||
+                                c == ',' || c == '.' || c == '—' || c == '-'
+                            ) { cut = k; break }
+                        }
+                    }
                     Text(
-                        title.take(breakAt),
+                        title.take(cut),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        title.drop(breakAt),
-                        style = MaterialTheme.typography.labelSmall,
+                        title.drop(cut).trimStart(),
+                        style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

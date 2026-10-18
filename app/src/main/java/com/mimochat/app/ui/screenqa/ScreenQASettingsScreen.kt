@@ -280,6 +280,13 @@ private fun PlanEditDialog(
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var prompt by remember { mutableStateOf(initial?.prompt ?: "") }
     var quality by remember { mutableFloatStateOf((initial?.quality ?: 85).toFloat()) }
+    var model by remember { mutableStateOf(initial?.model ?: "") }
+    val modelOptions = listOf(
+        "" to "默认（跟随 App 设置）",
+        "mimo-v2.6-flash" to "mimo-v2.6-flash（快）",
+        "mimo-v2.6-pro" to "mimo-v2.6-pro（准）",
+        "mimo-v2.6-pro-ultraspeed" to "mimo-v2.6-pro-ultraspeed（极速）"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -300,6 +307,16 @@ private fun PlanEditDialog(
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Text("使用模型", style = MaterialTheme.typography.labelMedium)
+                modelOptions.forEach { (id, label) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.RadioButton(
+                            selected = model == id,
+                            onClick = { model = id }
+                        )
+                        Text(label, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 Text("图片压缩率 ${quality.roundToInt()}%",
                     style = MaterialTheme.typography.labelMedium)
                 Slider(
@@ -323,7 +340,8 @@ private fun PlanEditDialog(
                             id = initial?.id ?: System.currentTimeMillis(),
                             name = name.trim(),
                             prompt = prompt.trim(),
-                            quality = quality.roundToInt().coerceIn(10, 100)
+                            quality = quality.roundToInt().coerceIn(10, 100),
+                            model = model
                         )
                     )
                 }

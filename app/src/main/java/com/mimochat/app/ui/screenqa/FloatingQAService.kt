@@ -86,6 +86,8 @@ class FloatingQAService : Service() {
     private val qaRepo by lazy { ScreenQARepository(applicationContext) }
     private val settingsRepo by lazy { SettingsRepository(applicationContext) }
     private val api by lazy { MiMoApi() }
+    private val app get() = application as com.mimochat.app.MiMoApplication
+    private val chatRepo get() = app.chatRepository
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -200,17 +202,118 @@ class FloatingQAService : Service() {
         }
     }
 
+    private var qaWindow: FloatingQAWindow? = null
+    private var lastShotPath: String? = null
+
     private fun handleCapture(bmp: Bitmap) {
         scope.launch {
             val cfgList = qaRepo.config.first()
             if (cfgList.autoMode && cfgList.plans.isNotEmpty()) {
                 val plan = cfgList.plans.firstOrNull { it.id == cfgList.activePlanId }
                     ?: cfgList.plans.first()
-                autoAnswer(bmp, plan.prompt, plan.quality)
+                autoAnswer(bmp, plan.prompt, plan.quality, plan.model)
             } else {
-                saveAndOpenChat(bmp)
+                val path = saveBitmap(bmp, 85)
+                lastShotPath = path
+                handler.post { openQaWindow(path) }
             }
         }
+    }
+
+    private fun openQaWindow(path: String) {
+        qaWindow?.dismiss()
+        val win = FloatingQAWindow(
+            context = this,
+            imagePath = path,
+            onSend = { q ->
+                scope.launch {
+                    val cfg = qaRepo.config.first()
+                    val plan = cfg.plans.firstOrNull { it.id == cfg.activePlanId } ?: cfg.plans.firstOrNull()
+                    val quality = plan?.quality ?: 85
+                    val model = plan?.model ?: ""
+                    val file = File(path)
+                    val bytes = file.readBytes()
+                    val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                    val url = "data:image/jpeg;base64,$b64"
+                    val settings = settingsRepo.settings.first().let {
+                        if (model.isNotBlank()) it.copy(model = model) else it
+                    }
+                    handler.post {
+                        qaWindow?.updateAnswer("思考中…")
+                    }
+                    try {
+                        val result = api.streamChat(
+                            settings,
+                            listOf(
+                                ApiMessage("user", listOf(ChatPart.Text(q), ChatPart.ImageUrl(url)))
+                            ),
+                            onContentDelta = {}, onReasoningDelta = {}
+                        )
+                        val answer = result.content.ifBlank { "（无回答）" }
+                        // 存档为「屏幕问答-XXX」
+                        scope.launch {
+                            val convId = createQAConversation(q, answer, path, result.reasoning)
+                            handler.post { qaWindow?.updateAnswer(answer) }
+                        }
+                    } catch (e: Exception) {
+                        handler.post { qaWindow?.updateAnswer("出错了：${e.message}") }
+                    }
+                }
+            },
+            onOpenFull = { answer ->
+                val path2 = lastShotPath
+                val i = Intent(this, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    if (path2 != null) putExtra("screen_qa_path", path2)
+                }
+                startActivity(i)
+                qaWindow?.dismiss()
+                qaWindow = null
+            },
+            onClose = {
+                qaWindow?.dismiss()
+                qaWindow = null
+            }
+        )
+        qaWindow = win
+        win.show()
+    }
+
+    /** 把单次问答存成 App 内会话「屏幕问答-问题前12字」 */
+    private suspend fun createQAConversation(
+        question: String,
+        answer: String,
+        imagePath: String,
+        reasoning: String
+    ): Long {
+        val title = "屏幕问答-" + question.take(12).replace("\n", " ")
+        val model = settingsRepo.settings.first().model
+        val convId = chatRepo.createConversation(model)
+        chatRepo.renameConversation(convId, title)
+        // 直接落库问答（不走网络）
+        val db = app.database
+        val now = System.currentTimeMillis()
+        val att = com.mimochat.app.data.ChatRepository.attachmentsToJson(
+            listOf(
+                com.mimochat.app.data.Attachment(
+                    type = "image", path = imagePath,
+                    name = java.io.File(imagePath).name
+                )
+            )
+        )
+        db.messageDao().insert(
+            com.mimochat.app.data.ChatMessage(
+                conversationId = convId, role = "user", content = question,
+                attachmentsJson = att, createdAt = now
+            )
+        )
+        db.messageDao().insert(
+            com.mimochat.app.data.ChatMessage(
+                conversationId = convId, role = "assistant", content = answer,
+                reasoning = reasoning, createdAt = now + 1
+            )
+        )
+        return convId
     }
 
     private fun saveAndOpenChat(bmp: Bitmap) {
@@ -222,14 +325,16 @@ class FloatingQAService : Service() {
         startActivity(i)
     }
 
-    private fun autoAnswer(bmp: Bitmap, prompt: String, quality: Int) {
+    private fun autoAnswer(bmp: Bitmap, prompt: String, quality: Int, model: String = "") {
         scope.launch {
             try {
                 val path = saveBitmap(bmp, quality)
                 val bytes = File(path).readBytes()
                 val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
                 val url = "data:image/jpeg;base64,$b64"
-                val settings = settingsRepo.settings.first()
+                val settings = settingsRepo.settings.first().let {
+                    if (model.isNotBlank()) it.copy(model = model) else it
+                }
                 val result = api.streamChat(
                     settings,
                     listOf(
@@ -297,13 +402,27 @@ class FloatingQAService : Service() {
             imageReader?.close()
             val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
             imageReader = reader
-            virtualDisplay?.release()
-            virtualDisplay = projection.createVirtualDisplay(
-                "screen_qa",
-                w, h, metrics.densityDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                reader.surface, null, handler
-            )
+            // 复用/重建 VirtualDisplay，但绝不 stop projection（否则下次要重新授权）
+            if (virtualDisplay == null) {
+                virtualDisplay = projection.createVirtualDisplay(
+                    "screen_qa",
+                    w, h, metrics.densityDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    reader.surface, null, handler
+                )
+            } else {
+                runCatching {
+                    virtualDisplay!!.setSurface(reader.surface)
+                }.onFailure {
+                    virtualDisplay?.release()
+                    virtualDisplay = projection.createVirtualDisplay(
+                        "screen_qa",
+                        w, h, metrics.densityDpi,
+                        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                        reader.surface, null, handler
+                    )
+                }
+            }
 
             handler.postDelayed({
                 try {
@@ -323,8 +442,7 @@ class FloatingQAService : Service() {
                     val cropped = Bitmap.createBitmap(bmp, 0, 0, w, h)
                     bmp.recycle()
                     image.close()
-                    virtualDisplay?.release()
-                    virtualDisplay = null
+                    // 保留 virtualDisplay 与 projection，供下次复用
                     onDone(cropped)
                 } catch (e: Exception) {
                     onDone(null)

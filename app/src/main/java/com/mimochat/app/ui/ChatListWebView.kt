@@ -213,8 +213,8 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   font-size:${fontSizeSp}px;line-height:1.7;--bc:$boldCss;--ac:$accent;}
 #list{padding:${topCss}px 14px ${botCss}px 14px;overflow-x:hidden;}
 .msg{margin:10px 0;}
-.msg:first-child{margin-top:0;}
-.msg:last-child{margin-bottom:4px;}
+.msg:first-child{margin-top:-6px;}
+.msg:last-child{margin-bottom:0;}
 .content > *:first-child{margin-top:2px;}
 .content > *:last-child{margin-bottom:2px;}
 .msg.user{display:flex;justify-content:flex-end;}
@@ -283,7 +283,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .reason pre{white-space:pre-wrap;margin:6px 0 0;font-family:inherit;
   background:transparent;padding:0;}
 .cites{margin-top:10px;padding-top:7px;border-top:1px solid $borderC;}
-.cites .t{font-size:12px;color:$muted;margin-bottom:4px;}
+.cites summary{cursor:pointer;font-size:12px;color:$muted;user-select:none;}
+.cites .t{font-size:12px;color:$muted;}
+.cites-body{margin-top:6px;}
 .cites .c{font-size:12px;color:$muted;margin:3px 0;cursor:pointer;}
 .cites .c .title{color:var(--ac);}
 .att-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
@@ -804,7 +806,7 @@ function msgHtml(m){
   else if (m.pending)
     h += '<div class="pending">正在思考…</div>';
   if (m.citations && m.citations.length){
-    h += '<div class="cites"><div class="t">参考来源</div>';
+    h += '<details class="cites"><summary>参考来源（' + m.citations.length + '）</summary><div class="cites-body">';
     for (var j = 0; j < m.citations.length; j++){
       var c = m.citations[j];
       h += '<div class="c" data-u="' + esc(c.url) + '">'
@@ -812,7 +814,7 @@ function msgHtml(m){
         + (c.siteName ? ' · ' + esc(c.siteName) : '')
         + '<br/>' + esc(c.url) + '</div>';
     }
-    h += '</div>';
+    h += '</div></details>';
   }
   if (!isUser && !m.pending && m.content){
     h += '<div class="actions">'
@@ -851,8 +853,10 @@ function renderChat(msgs, streaming){
   renderMath(el); renderCode(el); renderMermaid();
   bindBoxOps(); bindLinks();
   // 跟随：贴底；用户已操作：恢复原滚动位置，绝不抢
-  if (!window.__userScrolled) {
+  if (window.__followMode) {
+    window.__progScroll = true;
     window.scrollTo(0, document.body.scrollHeight);
+    setTimeout(function(){ window.__progScroll = false; }, 40);
   } else {
     window.scrollTo(0, prevTop);
   }
@@ -880,18 +884,38 @@ function notifyBottom(){
 }
 
 /* 跟随：仅用户手势（touch/wheel）打断；程序滚动不打断 */
-window.__userScrolled = false;
-function markUserScroll(){ window.__userScrolled = true; notifyBottom(); }
-document.addEventListener('touchstart', markUserScroll, {passive:true});
-document.addEventListener('wheel', markUserScroll, {passive:true});
-document.addEventListener('mousemove', function(e){
-  if (e.buttons) markUserScroll();
+window.__followMode = true;
+window.__progScroll = false;
+function atBottom(){
+  return (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 40);
+}
+function notifyBottom(){
+  var near = atBottom();
+  if (!window.__progScroll && !near) window.__followMode = false;
+  try { Android.onScroll(near && window.__followMode); } catch(e) {}
+}
+var lastTouchY = null;
+document.addEventListener('touchstart', function(e){
+  if (e.touches.length === 1) lastTouchY = e.touches[0].clientY;
+}, {passive:true});
+document.addEventListener('touchmove', function(e){
+  if (e.touches.length === 1 && lastTouchY != null){
+    var dy = e.touches[0].clientY - lastTouchY;
+    if (Math.abs(dy) > 12 && !atBottom()) window.__followMode = false;
+  }
+  notifyBottom();
+}, {passive:true});
+document.addEventListener('wheel', function(e){
+  if (e.deltaY < 0 && !atBottom()) window.__followMode = false;
+  notifyBottom();
 }, {passive:true});
 window.addEventListener('scroll', notifyBottom, {passive:true});
 
 window.__follow = function(){
-  window.__userScrolled = false;
+  window.__followMode = true;
+  window.__progScroll = true;
   window.scrollTo(0, document.body.scrollHeight);
+  setTimeout(function(){ window.__progScroll = false; }, 40);
   notifyBottom();
 };
 window.__jump = function(id){
@@ -910,8 +934,13 @@ window.__update = function(msgs, streaming){
     var list = document.getElementById('list');
     renderMath(list); renderCode(list);
     bindBoxOps(); bindLinks();
-    if (!window.__userScrolled) window.scrollTo(0, document.body.scrollHeight);
-    else window.scrollTo(0, prevTop);
+    if (window.__followMode) {
+      window.__progScroll = true;
+      window.scrollTo(0, document.body.scrollHeight);
+      setTimeout(function(){ window.__progScroll = false; }, 40);
+    } else {
+      window.scrollTo(0, prevTop);
+    }
     notifyBottom();
     return;
   }
