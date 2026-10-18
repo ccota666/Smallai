@@ -303,17 +303,21 @@ private fun CropPreview(
     }
 
     // 在父容器内完整显示：宽高都不超过父级，aspectRatio 只约束图片
-    Box(
-        Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(8.dp)),
+    // 按父容器实际空间计算图片显示尺寸，保证完整可见、不压按钮
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        Modifier.fillMaxSize().padding(2.dp),
         contentAlignment = Alignment.Center
     ) {
+        val maxW = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+        val maxH = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+        val imgW = rotatedW.toFloat().coerceAtLeast(1f)
+        val imgH = rotatedH.toFloat().coerceAtLeast(1f)
+        val k = minOf(maxW / imgW, maxH / imgH)
+        val dispW = (imgW * k).toInt().coerceAtLeast(1)
+        val dispH = (imgH * k).toInt().coerceAtLeast(1)
         Box(
             Modifier
-                .fillMaxWidth()
-                .aspectRatio(aspect)
-                .padding(2.dp)
+                .size(with(androidx.compose.ui.platform.LocalDensity.current){dispW.toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){dispH.toDp()})
         ) {
         Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
 

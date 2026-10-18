@@ -228,7 +228,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .msg.ai .bubble{max-width:100%;padding:0;border:none;background:transparent;}
 .content{margin:4px 0;overflow-wrap:break-word;}
 .content h1,.content h2,.content h3,.content h4,.content h5,.content h6{
-  margin:12px 0 7px;line-height:1.35;font-weight:700;color:var(--ac);}
+  margin:12px 0 7px;line-height:1.35;font-weight:700;color:inherit;}
 .content h1{font-size:1.3em;} .content h2{font-size:1.2em;}
 .content h3{font-size:1.1em;} .content h4{font-size:1.04em;}
 .content p{margin:12px 0;}
@@ -787,10 +787,12 @@ function blockMd(src){
       var hstyle = '';
       var bmH = (typeof BOLD_MODE !== 'undefined') ? BOLD_MODE : 'theme';
       if (bmH === 'colorful' || bmH === 'rainbow') {
-        // 标题与同段加粗同色
         hstyle = ' style="color:' + SEC_COLORS[sc] + '"';
       } else if (bmH && bmH !== 'theme' && bmH !== 'inherit') {
         hstyle = ' style="color:' + bmH + '"';
+      } else {
+        // 主题色：标题=墨色（黑），不用蓝
+        hstyle = ' style="color:inherit"';
       }
       out += '<h' + n + hstyle + '>'
            + inlineMd(t2.slice(n).replace(/^\s+/, '')) + '</h' + n + '>';

@@ -579,11 +579,9 @@ private fun ChatTopBar(
                             .clip(RoundedCornerShape(AppDimens.shapePill))
                             .height(32.dp)
                     ) {
-                        val expensiveSet = models
-                            .filter { it.contains("*") }
-                            .map { it.replace("*", "").trim() }
-                            .toSet()
-                        val modelExpensive = currentModel in expensiveSet
+                        val modelExpensive = com.mimochat.app.data.ModelsParser.isExpensive(
+                            models.joinToString(","), currentModel
+                        )
                         Text(
                             currentModel,
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
@@ -600,13 +598,10 @@ private fun ChatTopBar(
                     }
                 }
                 DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
-                    val expSet2 = models
-                        .filter { it.contains("*") }
-                        .map { it.replace("*", "").trim() }
-                        .toSet()
-                    models.forEach { raw ->
-                        val id = raw.replace("*", "").trim()
-                        val exp = id in expSet2
+                    val items = com.mimochat.app.data.ModelsParser.parse(models.joinToString(","))
+                    items.forEach { item ->
+                        val id = item.id
+                        val exp = item.expensive
                         DropdownMenuItem(
                             text = {
                                 Text(
