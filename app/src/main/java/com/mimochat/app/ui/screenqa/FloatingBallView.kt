@@ -36,6 +36,12 @@ class FloatingBallView(
     private var lastY = 0f
     private var dragging = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val longPressRunnable = Runnable {
+        if (!dragging) {
+            longPressed = true
+            onLongClick()
+        }
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(size.toInt(), size.toInt())
@@ -56,15 +62,14 @@ class FloatingBallView(
                 lastY = event.rawY
                 dragging = false
                 longPressed = false
-                postDelayed({
-                    if (!dragging) {
-                        longPressed = true
-                        onLongClick()
-                    }
-                }, 700)
+                removeCallbacks(longPressRunnable)
+                postDelayed(longPressRunnable, 700)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
+                if (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop) {
+                    removeCallbacks(longPressRunnable)
+                }
                 val dx = event.rawX - lastX
                 val dy = event.rawY - lastY
                 if (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop) {
@@ -82,7 +87,10 @@ class FloatingBallView(
                 return true
             }
             MotionEvent.ACTION_UP -> {
-                if (!dragging && !longPressed) onClick()
+                removeCallbacks(longPressRunnable)
+                if (!dragging && !longPressed) {
+                    runCatching { onClick() }
+                }
                 longPressed = false
                 return true
             }

@@ -193,31 +193,47 @@ class FloatingQAService : Service() {
 
     // ---------- 点球 ----------
     private fun onBallClick() {
-        if (mediaProjection == null) {
-            Toast.makeText(this, "截屏授权已失效，请到设置里重新启动悬浮球", Toast.LENGTH_LONG).show()
-            return
-        }
-        scope.launch {
-            val cfg = qaRepo.config.first()
-            if (cfg.autoMode && cfg.plans.isNotEmpty()) {
-                val plan = cfg.plans.firstOrNull { it.id == cfg.activePlanId } ?: cfg.plans.first()
-                handler.post { updateAnswerNotification("思考中…", ongoing = true) }
-                captureScreen { bmp ->
-                    if (bmp == null) {
-                        handler.post { updateAnswerNotification("截屏失败", ongoing = false) }
-                        return@captureScreen
-                    }
-                    autoAnswer(bmp, plan.prompt, plan.quality, plan.model)
-                }
-            } else {
-                handler.post { openQaWindow() }
+        try {
+            if (mediaProjection == null) {
+                Toast.makeText(this, "截屏授权已失效，请到设置里重新启动悬浮球", Toast.LENGTH_LONG).show()
+                return
             }
+            scope.launch {
+                val cfg = try { qaRepo.config.first() } catch (e: Exception) {
+                    com.mimochat.app.data.ScreenQAConfig()
+                }
+                handler.post {
+                    try {
+                        if (cfg.autoMode && cfg.plans.isNotEmpty()) {
+                            val plan = cfg.plans.firstOrNull { it.id == cfg.activePlanId }
+                                ?: cfg.plans.first()
+                            updateAnswerNotification("思考中…", ongoing = true)
+                            captureScreen { bmp ->
+                                if (bmp == null) {
+                                    handler.post { updateAnswerNotification("截屏失败", ongoing = false) }
+                                    return@captureScreen
+                                }
+                                autoAnswer(bmp, plan.prompt, plan.quality, plan.model)
+                            }
+                        } else {
+                            openQaWindow()
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("FloatingQAService", "ball click failed", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingQAService", "onBallClick failed", e)
         }
     }
 
     // ---------- 手动模式悬浮窗 ----------
     private fun openQaWindow() {
         if (qaWindow != null) return
+        if (windowManager == null) {
+            windowManager = getSystemService(WindowManager::class.java)
+        }
         val win = FloatingQAWindow(
             context = this,
             onScreenshot = {
@@ -353,41 +369,39 @@ class FloatingQAService : Service() {
         nm.notify(NOTIF_ANSWER, b.build())
     }
 
-    private fun createQAConversation(
+    private suspend fun createQAConversation(
         question: String,
         answer: String,
         imagePath: String,
         reasoning: String
     ): Long {
         val title = "屏幕问答-" + question.take(12).replace("\n", " ")
-        return kotlinx.coroutines.runBlocking {
-            val model = settingsRepo.settings.first().model
-            val convId = chatRepo.createConversation(model)
-            chatRepo.renameConversation(convId, title)
-            val db = app.database
-            val now = System.currentTimeMillis()
-            val att = com.mimochat.app.data.ChatRepository.attachmentsToJson(
-                listOf(
-                    com.mimochat.app.data.Attachment(
-                        type = "image", path = imagePath,
-                        name = File(imagePath).name
-                    )
+        val model = settingsRepo.settings.first().model
+        val convId = chatRepo.createConversation(model)
+        chatRepo.renameConversation(convId, title)
+        val db = app.database
+        val now = System.currentTimeMillis()
+        val att = com.mimochat.app.data.ChatRepository.attachmentsToJson(
+            listOf(
+                com.mimochat.app.data.Attachment(
+                    type = "image", path = imagePath,
+                    name = File(imagePath).name
                 )
             )
-            db.messageDao().insert(
-                com.mimochat.app.data.ChatMessage(
-                    conversationId = convId, role = "user", content = question,
-                    attachmentsJson = att, createdAt = now
-                )
+        )
+        db.messageDao().insert(
+            com.mimochat.app.data.ChatMessage(
+                conversationId = convId, role = "user", content = question,
+                attachmentsJson = att, createdAt = now
             )
-            db.messageDao().insert(
-                com.mimochat.app.data.ChatMessage(
-                    conversationId = convId, role = "assistant", content = answer,
-                    reasoning = reasoning, createdAt = now + 1
-                )
+        )
+        db.messageDao().insert(
+            com.mimochat.app.data.ChatMessage(
+                conversationId = convId, role = "assistant", content = answer,
+                reasoning = reasoning, createdAt = now + 1
             )
-            convId
-        }
+        )
+        return convId
     }
 
     private fun saveBitmap(bmp: Bitmap, quality: Int): String {

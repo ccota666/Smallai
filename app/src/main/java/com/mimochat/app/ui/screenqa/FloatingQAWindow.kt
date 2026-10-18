@@ -53,20 +53,25 @@ class FloatingQAWindow(
         if (root != null) return
         val view = buildView()
         root = view
-        val lp = WindowManager.LayoutParams(
-            widthForStep(),
-            heightForStep(),
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            // 不加 FLAG_NOT_FOCUSABLE，否则输入法弹不出来
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.CENTER
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        try {
+            val lp = WindowManager.LayoutParams(
+                widthForStep(),
+                heightForStep(),
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+                // 不加 FLAG_NOT_FOCUSABLE，否则输入法弹不出来
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.CENTER
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            }
+            wm.addView(view, lp)
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingQAWindow", "show failed", e)
+            root = null
         }
-        wm.addView(view, lp)
     }
 
     fun setShotStatus(text: String) {
@@ -103,7 +108,6 @@ class FloatingQAWindow(
                 setColor(if (filled) accent else Color.TRANSPARENT)
                 if (!filled) setStroke(dp(1), accent)
             }
-            stateListAnimator = null
             setOnClickListener { onClick() }
         }
     }
@@ -272,18 +276,19 @@ class FloatingQAWindow(
     private fun makeDraggable(handle: View) {
         var lastX = 0f
         var lastY = 0f
-        handle.setOnTouchListener { _, event ->
+        handle.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     lastX = event.rawX; lastY = event.rawY
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val lp = root?.layoutParams as? WindowManager.LayoutParams
+                    val target = root ?: return@setOnTouchListener false
+                    val lp = target.layoutParams as? WindowManager.LayoutParams
                     if (lp != null) {
                         lp.x += (event.rawX - lastX).toInt()
                         lp.y += (event.rawY - lastY).toInt()
-                        wm.updateViewLayout(root, lp)
+                        runCatching { wm.updateViewLayout(target, lp) }
                         lastX = event.rawX; lastY = event.rawY
                     }
                     true
