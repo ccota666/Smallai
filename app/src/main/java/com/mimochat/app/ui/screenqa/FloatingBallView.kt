@@ -14,8 +14,10 @@ import kotlin.math.abs
 @SuppressLint("ViewConstructor")
 class FloatingBallView(
     context: Context,
-    private val onClick: () -> Unit
+    private val onClick: () -> Unit,
+    private val onLongClick: () -> Unit = {}
 ) : View(context) {
+    private var longPressed = false
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#2F6FED")
@@ -53,6 +55,13 @@ class FloatingBallView(
                 lastX = event.rawX
                 lastY = event.rawY
                 dragging = false
+                longPressed = false
+                postDelayed({
+                    if (!dragging) {
+                        longPressed = true
+                        onLongClick()
+                    }
+                }, 700)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -73,7 +82,8 @@ class FloatingBallView(
                 return true
             }
             MotionEvent.ACTION_UP -> {
-                if (!dragging) onClick()
+                if (!dragging && !longPressed) onClick()
+                longPressed = false
                 return true
             }
         }

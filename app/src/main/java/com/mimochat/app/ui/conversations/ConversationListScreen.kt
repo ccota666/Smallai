@@ -76,6 +76,8 @@ fun ConversationListScreen(
         initializer { ConversationListViewModel(app.chatRepository, app.settingsRepository) }
     })
     val conversations by vm.conversations.collectAsState(initial = emptyList())
+    val firstUser by vm.firstUser.collectAsState(initial = emptyList())
+    val firstAssistant by vm.firstAssistant.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
     var selectionMode by remember { mutableStateOf(false) }
@@ -116,7 +118,31 @@ fun ConversationListScreen(
                                 .height(48.dp)
                         )
                     } else {
-                        Text("对话")
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    val id = vm.newConversation()
+                                    onOpenChat(id)
+                                }
+                            },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                horizontal = 10.dp, vertical = 4.dp
+                            )
+                        ) {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "新对话",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -127,17 +153,6 @@ fun ConversationListScreen(
                             contentDescription = "关闭搜索"
                         )
                     } else {
-                        AppIconButton(
-                            onClick = {
-                                scope.launch {
-                                    val id = vm.newConversation()
-                                    onOpenChat(id)
-                                }
-                            },
-                            icon = Icons.Rounded.Add,
-                            contentDescription = "新对话",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
                         AppIconButton(
                             onClick = { searchMode = true },
                             icon = Icons.Rounded.Search,
@@ -191,10 +206,18 @@ fun ConversationListScreen(
                     }
                 }
             } else {
+                val firstUserMap = remember(firstUser) {
+                    firstUser.associate { it.conversationId to it.content.trim() }
+                }
+                val firstAiMap = remember(firstAssistant) {
+                    firstAssistant.associate { it.conversationId to it.content.trim() }
+                }
                 LazyColumn(Modifier.weight(1f)) {
                     items(conversations, key = { it.id }) { conv ->
                         ConversationItem(
                             conv = conv,
+                            previewQuestion = { id -> firstUserMap[id] },
+                            previewAnswer = { id -> firstAiMap[id] },
                             selected = conv.id in selected,
                             selectionMode = selectionMode,
                             onClick = {
@@ -299,6 +322,8 @@ private fun SearchResultItem(hit: SearchHit, onClick: () -> Unit) {
 @Composable
 private fun ConversationItem(
     conv: Conversation,
+    previewQuestion: (Long) -> String?,
+    previewAnswer: (Long) -> String?,
     selected: Boolean,
     selectionMode: Boolean,
     onClick: () -> Unit,
@@ -319,37 +344,44 @@ private fun ConversationItem(
                 Spacer(Modifier.width(8.dp))
             }
             Column(Modifier.weight(1f)) {
-                // 标题两行：大字起头，小字接续排版（像同一句话换行，不是单独“结尾”）
-                val title = conv.title
-                val breakAt = 18
-                if (title.length <= breakAt) {
+                // 两行：上行首条用户问题（大字）；下行=问题续行，或问题一行时 AI 回答
+                val question = previewQuestion(conv.id) ?: conv.title
+                val answer = previewAnswer(conv.id).orEmpty()
+                val maxBig = 18
+                if (question.length <= maxBig) {
                     Text(
-                        title,
+                        question,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (answer.isNotBlank()) {
+                        Text(
+                            answer,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 } else {
-                    // 尽量在 breakAt 附近断词，避免生硬掐断
-                    var cut = breakAt
-                    if (cut < title.length) {
-                        for (k in breakAt downTo 2) {
-                            val c = title[k]
-                            if (c == ' ' || c == '，' || c == '、' || c == '。' ||
-                                c == ',' || c == '.' || c == '—' || c == '-'
-                            ) { cut = k; break }
-                        }
+                    var cut = maxBig
+                    for (k in maxBig downTo 2) {
+                        val c = question[k]
+                        if (c == ' ' || c == '，' || c == '、' || c == '。' ||
+                            c == ',' || c == '.' || c == '—' || c == '-'
+                        ) { cut = k; break }
                     }
                     Text(
-                        title.take(cut),
+                        question.take(cut),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        title.drop(cut).trimStart(),
+                        question.drop(cut).trimStart(),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                         maxLines = 1,

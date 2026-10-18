@@ -211,10 +211,10 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   overflow-x:hidden;
   font-family:-apple-system,'PingFang SC','Noto Sans SC',sans-serif;
   font-size:${fontSizeSp}px;line-height:1.7;--bc:$boldCss;--ac:$accent;}
-#list{padding:${topCss}px 14px ${botCss}px 14px;overflow-x:hidden;}
+#list{padding:${(topCss*0.6).toInt()}px 14px ${(botCss*0.7).toInt()}px 14px;overflow-x:hidden;}
 .msg{margin:10px 0;}
-.msg:first-child{margin-top:-6px;}
-.msg:last-child{margin-bottom:0;}
+.msg:first-child{margin-top:-12px;}
+.msg:last-child{margin-bottom:-8px;}
 .content > *:first-child{margin-top:2px;}
 .content > *:last-child{margin-bottom:2px;}
 .msg.user{display:flex;justify-content:flex-end;}
@@ -856,7 +856,9 @@ function renderChat(msgs, streaming){
   if (window.__followMode) {
     window.__progScroll = true;
     window.scrollTo(0, document.body.scrollHeight);
-    setTimeout(function(){ window.__progScroll = false; }, 40);
+    requestAnimationFrame(function(){
+      setTimeout(function(){ window.__progScroll = false; notifyBottom(); }, 20);
+    });
   } else {
     window.scrollTo(0, prevTop);
   }
@@ -884,39 +886,56 @@ function notifyBottom(){
 }
 
 /* 跟随：仅用户手势（touch/wheel）打断；程序滚动不打断 */
+/* 状态机（严格按需求）：
+   [*] --> Following: 用户提问
+   Following --流式--> Following: 自动滚到底
+   Following --用户滑动--> NotFollowing
+   NotFollowing --流式--> NotFollowing: 保持位置
+   NotFollowing --点返回底部--> Following
+   Following --用户再滑动--> NotFollowing
+*/
 window.__followMode = true;
 window.__progScroll = false;
+
 function atBottom(){
-  return (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 40);
+  return (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 48);
 }
 function notifyBottom(){
   var near = atBottom();
-  if (!window.__progScroll && !near) window.__followMode = false;
   try { Android.onScroll(near && window.__followMode); } catch(e) {}
 }
-var lastTouchY = null;
+// 用户滑动检测：只认 touchmove/wheel 的真实位移，且方向是离开底部
+var _ty = null;
 document.addEventListener('touchstart', function(e){
-  if (e.touches.length === 1) lastTouchY = e.touches[0].clientY;
+  if (e.touches.length === 1) _ty = e.touches[0].clientY;
 }, {passive:true});
 document.addEventListener('touchmove', function(e){
-  if (e.touches.length === 1 && lastTouchY != null){
-    var dy = e.touches[0].clientY - lastTouchY;
-    if (Math.abs(dy) > 12 && !atBottom()) window.__followMode = false;
+  if (window.__progScroll) return;
+  if (e.touches.length === 1 && _ty != null){
+    var dy = e.touches[0].clientY - _ty;
+    // 向上滑（想看旧消息）或已不在底部 → 进入 NotFollowing
+    if (dy < -8 || (Math.abs(dy) > 8 && !atBottom())){
+      window.__followMode = false;
+    }
   }
   notifyBottom();
 }, {passive:true});
+document.addEventListener('touchend', function(){ _ty = null; }, {passive:true});
 document.addEventListener('wheel', function(e){
-  if (e.deltaY < 0 && !atBottom()) window.__followMode = false;
+  if (window.__progScroll) return;
+  if (e.deltaY < -4) window.__followMode = false;
   notifyBottom();
 }, {passive:true});
 window.addEventListener('scroll', notifyBottom, {passive:true});
 
 window.__follow = function(){
+  // 点「返回底部」或用户提问 → Following
   window.__followMode = true;
   window.__progScroll = true;
   window.scrollTo(0, document.body.scrollHeight);
-  setTimeout(function(){ window.__progScroll = false; }, 40);
-  notifyBottom();
+  requestAnimationFrame(function(){
+    setTimeout(function(){ window.__progScroll = false; notifyBottom(); }, 30);
+  });
 };
 window.__jump = function(id){
   var el = document.getElementById('msg-' + id);
@@ -937,10 +956,11 @@ window.__update = function(msgs, streaming){
     if (window.__followMode) {
       window.__progScroll = true;
       window.scrollTo(0, document.body.scrollHeight);
-      setTimeout(function(){ window.__progScroll = false; }, 40);
-    } else {
-      window.scrollTo(0, prevTop);
+      requestAnimationFrame(function(){
+        setTimeout(function(){ window.__progScroll = false; notifyBottom(); }, 20);
+      });
     }
+    // NotFollowing：完全不动滚动位置
     notifyBottom();
     return;
   }

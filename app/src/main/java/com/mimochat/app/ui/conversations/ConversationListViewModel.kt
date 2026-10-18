@@ -25,6 +25,14 @@ class ConversationListViewModel(
     val conversations = repo.observeConversations()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** 会话id -> 首条用户问题（两行预览第一行） */
+    val firstUser = repo.observeFirstUserMessages()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 会话id -> 首条 AI 回答（问题只有一行时用） */
+    val firstAssistant = repo.observeFirstAssistantMessages()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val settings: StateFlow<AppSettings> = settingsRepo.settings
         .stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 

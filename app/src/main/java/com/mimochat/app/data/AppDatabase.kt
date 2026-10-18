@@ -64,6 +64,30 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE content LIKE '%' || :query || '%' ORDER BY createdAt DESC, id DESC LIMIT 200")
     suspend fun searchMessages(query: String): List<ChatMessage>
+
+    /** 每个会话的首条用户消息（对话列表两行预览用，一次查询） */
+    @Query(
+        """
+        SELECT m.* FROM messages m
+        WHERE m.role = 'user' AND m.id = (
+            SELECT MIN(m2.id) FROM messages m2
+            WHERE m2.conversationId = m.conversationId AND m2.role = 'user'
+        )
+        """
+    )
+    fun observeFirstUserMessages(): Flow<List<ChatMessage>>
+
+    /** 每个会话的首条 AI 回复 */
+    @Query(
+        """
+        SELECT m.* FROM messages m
+        WHERE m.role = 'assistant' AND m.id = (
+            SELECT MIN(m2.id) FROM messages m2
+            WHERE m2.conversationId = m.conversationId AND m2.role = 'assistant'
+        )
+        """
+    )
+    fun observeFirstAssistantMessages(): Flow<List<ChatMessage>>
 }
 
 @Database(

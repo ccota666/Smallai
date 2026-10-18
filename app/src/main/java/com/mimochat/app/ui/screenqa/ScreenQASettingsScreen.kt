@@ -132,23 +132,28 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
             // 总开关
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
+                    Text("悬浮球", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("启用悬浮球", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = config.enabled,
-                            onCheckedChange = { on ->
-                                if (on) {
-                                    ensureOverlayThenProjection()
-                                } else {
-                                    FloatingQAService.stop(context)
-                                    scope.launch { repo.setEnabled(false) }
-                                }
-                            }
+                        Text(
+                            if (config.enabled) "运行中 · 点球提问，长按球退出"
+                            else "未启动",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
                         )
+                        if (config.enabled) {
+                            Button(onClick = {
+                                FloatingQAService.stop(context)
+                                scope.launch { repo.setEnabled(false) }
+                            }) { Text("停止") }
+                        } else {
+                            Button(onClick = { ensureOverlayThenProjection() }) { Text("启动悬浮球") }
+                        }
                     }
                     Text(
-                        "开启后屏幕上有「问」字悬浮球，点击即截屏问答。首次开启需授权悬浮窗与截屏。",
-                        style = MaterialTheme.typography.bodySmall,
+                        "点击「启动悬浮球」才启动；App 重启不会自动常驻，避免后台残留「屏幕共享」。首次启动需授权悬浮窗与截屏。",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

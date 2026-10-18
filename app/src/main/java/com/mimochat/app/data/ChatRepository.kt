@@ -21,6 +21,9 @@ class ChatRepository(
 
     fun cancelGeneration() = api.cancel()
 
+    fun observeFirstUserMessages() = db.messageDao().observeFirstUserMessages()
+    fun observeFirstAssistantMessages() = db.messageDao().observeFirstAssistantMessages()
+
     suspend fun searchMessages(query: String): List<ChatMessage> =
         db.messageDao().searchMessages(query)
 
