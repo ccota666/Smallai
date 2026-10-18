@@ -321,9 +321,16 @@ class FloatingQAService : Service() {
     private var lastShotPath: String? = null
     private var lastQuestion: String = ""
     private var lastAnswer: String = ""
+    // 自动模式通知状态：防止流式回调把最终结果盖掉
+    @Volatile private var qaStatusFinal = false
+    private var lastStatusAt = 0L
+    private var qaSession = 0L
 
     // ---------- 自动模式 ----------
     private fun autoAnswer(bmp: Bitmap, prompt: String, quality: Int, model: String = "") {
+        val session = ++qaSession
+        qaStatusFinal = false
+        lastStatusAt = 0L
         scope.launch {
             try {
                 val path = saveBitmap(bmp, quality)
@@ -333,29 +340,41 @@ class FloatingQAService : Service() {
                 val settings = settingsRepo.settings.first().let {
                     if (model.isNotBlank()) it.copy(model = model) else it
                 }
+                fun progress(msg: String) {
+                    // 节流：500ms 内最多刷一次；final 之后绝不再改
+                    if (qaStatusFinal || session != qaSession) return
+                    val now = System.currentTimeMillis()
+                    if (now - lastStatusAt < 500) return
+                    lastStatusAt = now
+                    handler.post {
+                        if (!qaStatusFinal && session == qaSession) {
+                            updateAnswerNotification(msg, ongoing = true)
+                        }
+                    }
+                }
                 val result = api.streamChat(
                     settings,
                     listOf(
                         ApiMessage("user", listOf(ChatPart.Text(prompt), ChatPart.ImageUrl(url)))
                     ),
-                    onContentDelta = {
-                        handler.post { updateAnswerNotification("生成中…", ongoing = true) }
-                    },
-                    onReasoningDelta = {
-                        handler.post { updateAnswerNotification("思考中…", ongoing = true) }
-                    }
+                    onContentDelta = { progress("生成中…") },
+                    onReasoningDelta = { progress("思考中…") }
                 )
+                if (session != qaSession) return@launch
                 val answer = result.content.ifBlank { "（无回答）" }
                 qaRepo.setLastAnswer(answer)
+                qaStatusFinal = true
                 handler.post {
                     Toast.makeText(this@FloatingQAService, "问答完成，见通知", Toast.LENGTH_SHORT).show()
+                    updateAnswerNotification(answer, ongoing = false)
                 }
-                updateAnswerNotification(answer, ongoing = false)
             } catch (e: Exception) {
+                if (session != qaSession) return@launch
+                qaStatusFinal = true
                 handler.post {
                     Toast.makeText(this@FloatingQAService, "问答失败：${e.message}", Toast.LENGTH_LONG).show()
+                    updateAnswerNotification("出错了：${e.message}", ongoing = false)
                 }
-                updateAnswerNotification("出错了：${e.message}", ongoing = false)
             }
         }
     }
@@ -389,6 +408,7 @@ class FloatingQAService : Service() {
             .setContentIntent(open)
             .setAutoCancel(!ongoing)
             .setOngoing(ongoing)
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
         if (ongoing) b.setProgress(0, 0, true)
         nm.notify(NOTIF_ANSWER, b.build())
