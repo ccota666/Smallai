@@ -342,16 +342,11 @@ class FloatingQAService : Service() {
                     if (model.isNotBlank()) it.copy(model = model) else it
                 }
                 fun progress(msg: String) {
-                    // 节流：500ms 内最多刷一次；final 之后绝不再改
-                    if (qaStatusFinal || session != qaSession) return
+                    if (qaStatusFinal) return
                     val now = System.currentTimeMillis()
                     if (now - lastStatusAt < 500) return
                     lastStatusAt = now
-                    handler.post {
-                        if (!qaStatusFinal && session == qaSession) {
-                            updateAnswerNotification(msg, ongoing = true)
-                        }
-                    }
+                    updateAnswerNotification(msg, ongoing = true)
                 }
                 val result = api.streamChat(
                     settings,
@@ -361,27 +356,23 @@ class FloatingQAService : Service() {
                     onContentDelta = { progress("生成中…") },
                     onReasoningDelta = { progress("思考中…") }
                 )
-                if (session != qaSession) return@launch
                 val answer = result.content.ifBlank { "（无回答）" }
                 qaRepo.setLastAnswer(answer)
                 qaStatusFinal = true
-                handler.post {
-                    Toast.makeText(this@FloatingQAService, "问答完成，见通知", Toast.LENGTH_SHORT).show()
-                    updateAnswerNotification(answer, ongoing = false)
-                }
+                // 直接发结果，不经过 handler 二次排队
+                updateAnswerNotification(answer, ongoing = false)
             } catch (e: Exception) {
-                if (session != qaSession) return@launch
                 qaStatusFinal = true
-                handler.post {
-                    Toast.makeText(this@FloatingQAService, "问答失败：${e.message}", Toast.LENGTH_LONG).show()
-                    updateAnswerNotification("出错了：${e.message}", ongoing = false)
-                }
+                updateAnswerNotification("出错了：${e.message}", ongoing = false)
             }
         }
     }
 
+    /**
+     * ongoing=true  仅用于「思考中/生成中」进度（可被结果替换）
+     * ongoing=false 最终结果：独立 ID + Toast 双保险，保证一定看得见
+     */
     private fun updateAnswerNotification(text: String, ongoing: Boolean) {
-        // 结果通知：无权限也 Toast，绝不静默
         val nm = getSystemService(NotificationManager::class.java)
         val open = PendingIntent.getActivity(
             this, 0,
@@ -389,8 +380,9 @@ class FloatingQAService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val id = if (ongoing) NOTIF_STATUS else NOTIF_ANSWER
+        val title = if (ongoing) "屏幕问答" else "屏幕问答结果"
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(if (ongoing) "屏幕问答" else "屏幕问答结果")
+            .setContentTitle(title)
             .setContentText(text.take(120))
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(
@@ -403,19 +395,21 @@ class FloatingQAService : Service() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
         if (ongoing) b.setProgress(0, 0, true)
         try {
-            // 完成时撤掉进度条通知，再弹结果，避免互相覆盖
-            if (!ongoing) runCatching { nm.cancel(NOTIF_STATUS) }
+            if (!ongoing) {
+                // 出结果：先收进度，再挂结果
+                runCatching { nm.cancel(NOTIF_STATUS) }
+            }
             nm.notify(id, b.build())
         } catch (e: Exception) {
             android.util.Log.e("FloatingQAService", "notify failed", e)
         }
-        // Toast 兜底，保证一定看得见
-        handler.post {
-            Toast.makeText(
-                this,
-                (if (ongoing) "" else "回答：") + text.take(100),
-                if (ongoing) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
-            ).show()
+        // 最终结果必须 Toast，通知挂了也看得见
+        if (!ongoing) {
+            handler.post {
+                runCatching {
+                    Toast.makeText(this, "屏幕问答结果：${text.take(90)}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

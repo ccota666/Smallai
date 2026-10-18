@@ -22,9 +22,11 @@ import android.widget.TextView
 /**
  * 屏幕问答悬浮窗。
  *
- * 输入法：只让 EditText 原生处理焦点，不手动 showSoftInput、不随意 updateViewLayout，
- * 避免「键盘开关循环」。
- * 布局：透明度/大小各占一行，按钮不会挤出窗体。
+ * 输入法稳定方案（为什么这么写）：
+ * 1. 窗口默认 FLAG_NOT_FOCUSABLE —— 不抢系统焦点，也就不会出现「键盘弹了又收」循环
+ * 2. 只在用户点输入框那一次去掉该 flag，然后 toggleSoftInput(SHOW_FORCED)
+ * 3. softInputMode 用 ADJUST_NOTHING；窗口放在屏幕上半部，键盘不会盖住输入框
+ * 4. 绝不在聚焦/键盘回调里 updateViewLayout（那是闪烁的元凶）
  */
 @SuppressLint("ClickableViewAccessibility")
 class FloatingQAWindow(
@@ -40,9 +42,10 @@ class FloatingQAWindow(
     private var answerView: TextView? = null
     private var inputView: EditText? = null
     private var statusView: TextView? = null
+    private var imeOn = false
 
-    private var alphaStep = 2 // 0=100% 1=80% 2=60% 3=40%
-    private var sizeStep = 1  // 0=小 1=中 2=大
+    private var alphaStep = 2
+    private var sizeStep = 1
 
     private val accent = Color.parseColor("#2F6FED")
     private val bgPage = Color.parseColor("#F4F6FB")
@@ -62,14 +65,15 @@ class FloatingQAWindow(
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-                // 可聚焦（要输入），但点窗外不拦
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
-                gravity = Gravity.CENTER
-                // PAN：键盘弹出时窗口上移，而不是 RESIZE 重排（重排会闪）
-                // PAN：键盘出窗上移。不要 STATE_ALWAYS_HIDDEN，否则键盘永远弹不出来
-                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
+                // 放上半屏，键盘出来也盖不到输入框
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = (56 * context.resources.displayMetrics.density).toInt()
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
             }
             wm.addView(view, lp)
         } catch (e: Exception) {
@@ -102,8 +106,18 @@ class FloatingQAWindow(
 
     private fun dp(v: Int) = (v * context.resources.displayMetrics.density).toInt()
     private fun widthForStep() = when (sizeStep) { 0 -> dp(280); 2 -> dp(360); else -> dp(310) }
-    private fun heightForStep() = when (sizeStep) { 0 -> dp(320); 2 -> dp(520); else -> dp(400) }
+    private fun heightForStep() = when (sizeStep) { 0 -> dp(340); 2 -> dp(520); else -> dp(420) }
     private fun alphaValue() = when (alphaStep) { 0 -> 1.0f; 1 -> 0.8f; 2 -> 0.6f; else -> 0.4f }
+
+    /** 让窗口可聚焦并弹出键盘 —— 只做一次 */
+    private fun enableImeAndFocus() {
+        if (imeOn) return
+        imeOn = true
+        val target = windowView ?: return
+        val lp = target.layoutParams as? WindowManager.LayoutParams ?: return
+        lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        runCatching { wm.updateViewLayout(target, lp) }
+    }
 
     private fun smallBtn(text: String, filled: Boolean, onClick: () -> Unit): Button {
         return Button(context).apply {
@@ -116,8 +130,7 @@ class FloatingQAWindow(
             setTextColor(if (filled) Color.WHITE else accent)
             background = GradientDrawable().apply {
                 cornerRadius = dp(12).toFloat()
-                if (filled) setColor(accent)
-                else {
+                if (filled) setColor(accent) else {
                     setColor(Color.TRANSPARENT)
                     setStroke(dp(1), accent)
                 }
@@ -133,7 +146,6 @@ class FloatingQAWindow(
         setPadding(dp(2), 0, dp(4), 0)
     }
 
-    /** 调节行：标题 + 两个按钮，一行放下 */
     private fun tuneRow(name: String, onMinus: () -> Unit, onPlus: () -> Unit): LinearLayout {
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -156,12 +168,8 @@ class FloatingQAWindow(
             alpha = alphaValue()
             elevation = dp(10).toFloat()
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            isFocusable = false
-            isFocusableInTouchMode = false
-            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
 
-        // 顶栏（可拖动）
         val top = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -177,22 +185,18 @@ class FloatingQAWindow(
         root.addView(top)
         makeDraggable(top)
 
-        // 调节两行 —— 各占一行，绝不挤出
         root.addView(tuneRow("透明度",
             onMinus = { if (alphaStep < 3) { alphaStep++; windowView?.alpha = alphaValue() } },
             onPlus = { if (alphaStep > 0) { alphaStep--; windowView?.alpha = alphaValue() } }
-        ), LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(6) })
+        ), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(6) })
 
         root.addView(tuneRow("大小",
             onMinus = { if (sizeStep > 0) { sizeStep--; applySize() } },
             onPlus = { if (sizeStep < 2) { sizeStep++; applySize() } }
-        ), LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(4) })
+        ), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(4) })
 
-        // 截屏
         root.addView(smallBtn("截屏", true) { onScreenshot() },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 .apply { topMargin = dp(8) })
@@ -204,7 +208,6 @@ class FloatingQAWindow(
         }
         root.addView(statusView)
 
-        // 输入框：只用原生焦点，不手动弹键盘
         inputView = EditText(context).apply {
             hint = "输入问题，例如：是否给某某转了 500 元？"
             setSingleLine(false)
@@ -220,20 +223,18 @@ class FloatingQAWindow(
             setPadding(dp(12), dp(10), dp(12), dp(10))
             isFocusable = true
             isFocusableInTouchMode = true
-            isCursorVisible = true
-            // 聚焦后 post 弹键盘，避免和窗口布局抢跑
-            setOnFocusChangeListener { v, has ->
-                if (has) {
+            // 点输入框 → 开键盘（只此一处）
+            setOnTouchListener { v, event ->
+                if (event.action == MotionEvent.ACTION_UP) {
+                    enableImeAndFocus()
+                    v.requestFocus()
                     v.post {
                         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
                             as InputMethodManager
-                        imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+                        // SHOW_FORCED 对悬浮窗最稳
+                        @Suppress("DEPRECATION")
+                        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
                     }
-                }
-            }
-            setOnTouchListener { v, event ->
-                if (event.action == MotionEvent.ACTION_UP && !hasFocus()) {
-                    v.requestFocus()
                 }
                 false
             }
@@ -244,20 +245,13 @@ class FloatingQAWindow(
 
         root.addView(smallBtn("发送提问", true) {
             val q = inputView?.text?.toString()?.trim().orEmpty()
-            if (q.isNotEmpty()) {
-                onSend(q)
-            }
-        }, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
+            if (q.isNotEmpty()) onSend(q)
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(8) })
 
-        // 答案
         val scroll = ScrollView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1f
-            ).apply { topMargin = dp(8) }
-            isFocusable = false
-            isFocusableInTouchMode = false
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
+                .apply { topMargin = dp(8) }
         }
         answerView = TextView(context).apply {
             textSize = 13f
@@ -267,7 +261,6 @@ class FloatingQAWindow(
         scroll.addView(answerView)
         root.addView(scroll)
 
-        // 底栏
         val bottom = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
