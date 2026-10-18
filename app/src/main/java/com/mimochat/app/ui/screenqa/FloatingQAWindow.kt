@@ -65,7 +65,7 @@ class FloatingQAWindow(
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER
-                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING // 防键盘开关循环
             }
             wm.addView(view, lp)
         } catch (e: Exception) {
@@ -201,11 +201,16 @@ class FloatingQAWindow(
             setPadding(dp(12), dp(10), dp(12), dp(10))
             isFocusable = true
             isFocusableInTouchMode = true
-            setOnFocusChangeListener { v, has ->
-                if (has) {
-                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                    imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+            setOnTouchListener { v, event ->
+                if (event.action == MotionEvent.ACTION_UP && !hasFocus()) {
+                    v.requestFocus()
+                    v.post {
+                        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                            as InputMethodManager
+                        imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+                    }
                 }
+                false
             }
         }
         root.addView(inputView, LinearLayout.LayoutParams(
@@ -258,7 +263,6 @@ class FloatingQAWindow(
         makeDraggable(top)
 
         // 点击窗体时允许获得焦点（键盘）
-        root.setOnClickListener { }
         return root
     }
 

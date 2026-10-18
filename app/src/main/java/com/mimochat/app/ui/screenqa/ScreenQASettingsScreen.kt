@@ -81,6 +81,10 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
     val mpm = remember {
         context.getSystemService(MediaProjectionManager::class.java)
     }
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* 通知权限结果不阻塞，无权限时用 Toast 兜底 */ }
+
     val projectionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { res ->
@@ -103,6 +107,10 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
             context.startActivity(i)
             Toast.makeText(context, "请允许「显示在其他应用上层」后再次开启", Toast.LENGTH_LONG).show()
             return
+        }
+        // 通知权限（自动模式结果靠通知展示）
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            notifPermLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
         projectionLauncher.launch(mpm.createScreenCaptureIntent())
     }

@@ -207,14 +207,22 @@ class FloatingQAService : Service() {
                         if (cfg.autoMode && cfg.plans.isNotEmpty()) {
                             val plan = cfg.plans.firstOrNull { it.id == cfg.activePlanId }
                                 ?: cfg.plans.first()
+                            Toast.makeText(this@FloatingQAService, "屏幕问答：截屏中…", Toast.LENGTH_SHORT).show()
                             updateAnswerNotification("思考中…", ongoing = true)
                             captureScreen { bmp ->
                                 if (bmp == null) {
+                                    Toast.makeText(this@FloatingQAService, "截屏失败", Toast.LENGTH_SHORT).show()
                                     handler.post { updateAnswerNotification("截屏失败", ongoing = false) }
                                     return@captureScreen
                                 }
                                 autoAnswer(bmp, plan.prompt, plan.quality, plan.model)
                             }
+                        } else if (cfg.autoMode && cfg.plans.isEmpty()) {
+                            Toast.makeText(
+                                this@FloatingQAService,
+                                "自动模式已开，但还没有方案，请到设置里新建",
+                                Toast.LENGTH_LONG
+                            ).show()
                         } else {
                             openQaWindow()
                         }
@@ -339,14 +347,31 @@ class FloatingQAService : Service() {
                 )
                 val answer = result.content.ifBlank { "（无回答）" }
                 qaRepo.setLastAnswer(answer)
+                handler.post {
+                    Toast.makeText(this@FloatingQAService, "问答完成，见通知", Toast.LENGTH_SHORT).show()
+                }
                 updateAnswerNotification(answer, ongoing = false)
             } catch (e: Exception) {
+                handler.post {
+                    Toast.makeText(this@FloatingQAService, "问答失败：${e.message}", Toast.LENGTH_LONG).show()
+                }
                 updateAnswerNotification("出错了：${e.message}", ongoing = false)
             }
         }
     }
 
     private fun updateAnswerNotification(text: String, ongoing: Boolean) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                // 无通知权限时至少 Toast 出结果
+                handler.post {
+                    Toast.makeText(this, text.take(120), Toast.LENGTH_LONG).show()
+                }
+                return
+            }
+        }
         val nm = getSystemService(NotificationManager::class.java)
         val open = PendingIntent.getActivity(
             this, 0,
