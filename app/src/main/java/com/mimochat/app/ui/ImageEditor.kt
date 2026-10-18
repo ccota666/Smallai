@@ -209,7 +209,7 @@ fun ImageEditorDialog(
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
 
                 // 旋转：仅 90°
                 Row(
@@ -302,12 +302,19 @@ private fun CropPreview(
         }
     }
 
+    // 在父容器内完整显示：宽高都不超过父级，aspectRatio 只约束图片
     Box(
         Modifier
-            .fillMaxWidth()
-            .aspectRatio(aspect)
-            .clip(RoundedCornerShape(8.dp))
+            .fillMaxSize()
+            .clip(RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
     ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspect)
+                .padding(2.dp)
+        ) {
         Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
 
         // 透明手势层：确保拿到所有拖拽
@@ -418,6 +425,7 @@ private fun CropPreview(
                 drawRect(Color.White, Offset(o.x - hs / 2, o.y - hs / 2), Size(hs, hs))
             }
         }
+    }
     }
 }
 

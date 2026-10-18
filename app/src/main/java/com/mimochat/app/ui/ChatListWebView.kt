@@ -253,6 +253,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
   background:linear-gradient(transparent,${codeBg});pointer-events:none;}
 .codebox-wrap{position:relative;}
+.expand-btn{position:absolute;right:8px;bottom:6px;z-index:5;
+  border:1px solid ${borderC};background:${codeBg};color:${muted};
+  border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer;}
 .box pre code{background:transparent;padding:0;font-size:12.5px;line-height:1.55;}
 .box .mathpad{padding:12px;overflow-x:auto;text-align:center;}
 .box .mmpad{padding:10px;overflow-x:auto;}
@@ -508,14 +511,9 @@ function closeFs(){
 }
 
 /* 顶栏：复制 + 全屏 */
-function headHtml(label, copyText, fsHtml, fsTitle, expandLabel){
-  var extra = '';
-  if (expandLabel){
-    extra = '<button data-act="expand">' + esc(expandLabel) + '</button>';
-  }
+function headHtml(label, copyText, fsHtml, fsTitle){
   return '<div class="bhead"><span>' + esc(label) + '</span>'
     + '<div class="ops">'
-    + extra
     + '<button data-act="copy" data-t="' + esc(copyText) + '">复制</button>'
     + '<button data-act="fs" data-title="' + esc(fsTitle || label) + '">全屏</button>'
     + '</div></div>';
@@ -528,17 +526,20 @@ function bindBoxOps(){
       var body = box.lastChild;
       var copyBtn = head.querySelector('button[data-act=copy]');
       var fsBtn = head.querySelector('button[data-act=fs]');
-      var expBtn = head.querySelector('button[data-act=expand]');
-      if (expBtn){
-        expBtn.onclick = function(e){
+      // 展开按钮在代码框右下角
+      var bodyEl = box.querySelector('.codebody');
+      if (bodyEl && bodyEl.classList.contains('clamped')){
+        var exp = document.createElement('button');
+        exp.className = 'expand-btn';
+        exp.textContent = ' 展开';
+        exp.onclick = function(e){
           e.stopPropagation();
-          var bodyEl = box.querySelector('.codebody');
-          if (!bodyEl) return;
-          var clamped = bodyEl.classList.toggle('clamped');
+          var on = bodyEl.classList.toggle('clamped');
           var fade = bodyEl.querySelector('.fade');
-          if (fade) fade.style.display = clamped ? '' : 'none';
-          expBtn.textContent = clamped ? ' 展开' : '收起';
+          if (fade) fade.style.display = on ? '' : 'none';
+          exp.textContent = on ? ' 展开' : '收起';
         };
+        box.appendChild(exp);
       }
       if (copyBtn){
         copyBtn.onclick = function(e){
@@ -609,8 +610,8 @@ function replaceBold(t){
     } else if (mode && mode !== 'theme' && mode !== 'inherit') {
       open += ' style="color:' + mode + '"';
     } else {
-      // theme：跟随主色
-      open += ' style="color:var(--ac)"';
+      // 主题色：加粗用墨色（黑），不是主色
+      open += ' style="color:inherit;font-weight:700"';
     }
     open += '>';
     out += t.slice(i, s1) + open + inner + '</strong>';
@@ -739,7 +740,7 @@ function blockMd(src){
         cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
           '<pre><code class="language-' + esc(lang) + '">' + esc(body) + '</code></pre>',
-          lang + ' 代码', clamped ? ' 展开' : '');
+          lang + ' 代码');
         var cbody = document.createElement('div');
         cbody.className = 'codebody' + (clamped ? ' clamped' : '');
         cbody.innerHTML = '<pre><code class="language-' + esc(lang) + '">'

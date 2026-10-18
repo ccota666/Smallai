@@ -579,10 +579,16 @@ private fun ChatTopBar(
                             .clip(RoundedCornerShape(AppDimens.shapePill))
                             .height(32.dp)
                     ) {
+                        val expensiveSet = models
+                            .filter { it.contains("*") }
+                            .map { it.replace("*", "").trim() }
+                            .toSet()
+                        val modelExpensive = currentModel in expensiveSet
                         Text(
                             currentModel,
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = if (modelExpensive) Color(0xFFE74C3C)
+                                    else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1
                         )
                         Icon(
@@ -594,17 +600,26 @@ private fun ChatTopBar(
                     }
                 }
                 DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
-                    models.forEach { m ->
+                    val expSet2 = models
+                        .filter { it.contains("*") }
+                        .map { it.replace("*", "").trim() }
+                        .toSet()
+                    models.forEach { raw ->
+                        val id = raw.replace("*", "").trim()
+                        val exp = id in expSet2
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    if (m == currentModel) "● $m" else "   $m",
-                                    fontWeight = if (m == currentModel)
+                                    (if (id == currentModel) "● " else "   ") + id +
+                                        if (exp) " ¥" else "",
+                                    color = if (exp) Color(0xFFE74C3C)
+                                            else MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = if (id == currentModel)
                                         androidx.compose.ui.text.font.FontWeight.Bold
                                     else androidx.compose.ui.text.font.FontWeight.Normal
                                 )
                             },
-                            onClick = { onSelectModel(m); modelMenuOpen = false }
+                            onClick = { onSelectModel(id); modelMenuOpen = false }
                         )
                     }
                 }

@@ -83,3 +83,33 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setBoldColor(v: Int) = context.dataStore.edit { it[Keys.BOLD_COLOR] = v }
 }
+
+/** 模型列表解析：**name** 表示高价模型（显示红色），name 为普通 */
+object ModelsParser {
+    data class ModelItem(val id: String, val expensive: Boolean)
+
+    fun parse(modelsCsv: String): List<ModelItem> {
+        return modelsCsv.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { raw ->
+                val t = raw.trim()
+                if (t.startsWith("**") && t.endsWith("**") && t.length > 4) {
+                    ModelItem(t.substring(2, t.length - 2).trim(), true)
+                } else {
+                    ModelItem(t, false)
+                }
+            }
+    }
+
+    fun isExpensive(modelsCsv: String, id: String): Boolean {
+        return parse(modelsCsv).any { it.id == id && it.expensive }
+    }
+
+    /** 存回 csv 时保留 ** 标记 */
+    fun toCsv(items: List<ModelItem>): String {
+        return items.joinToString(",") {
+            if (it.expensive) "**${it.id}**" else it.id
+        }
+    }
+}
