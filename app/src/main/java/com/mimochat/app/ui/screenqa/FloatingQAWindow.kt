@@ -68,8 +68,8 @@ class FloatingQAWindow(
             ).apply {
                 gravity = Gravity.CENTER
                 // PAN：键盘弹出时窗口上移，而不是 RESIZE 重排（重排会闪）
-                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN or
-                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+                // PAN：键盘出窗上移。不要 STATE_ALWAYS_HIDDEN，否则键盘永远弹不出来
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
             }
             wm.addView(view, lp)
         } catch (e: Exception) {
@@ -221,6 +221,22 @@ class FloatingQAWindow(
             isFocusable = true
             isFocusableInTouchMode = true
             isCursorVisible = true
+            // 聚焦后 post 弹键盘，避免和窗口布局抢跑
+            setOnFocusChangeListener { v, has ->
+                if (has) {
+                    v.post {
+                        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                            as InputMethodManager
+                        imm.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+                    }
+                }
+            }
+            setOnTouchListener { v, event ->
+                if (event.action == MotionEvent.ACTION_UP && !hasFocus()) {
+                    v.requestFocus()
+                }
+                false
+            }
         }
         root.addView(inputView, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT

@@ -56,6 +56,7 @@ class FloatingQAService : Service() {
         const val CHANNEL_ID = "screen_qa"
         const val NOTIF_FOREGROUND = 1001
         const val NOTIF_ANSWER = 1002
+        const val NOTIF_STATUS = 1003
         const val EXTRA_PROJECTION_DATA = "projection_data"
         var projectionData: Intent? = null
 
@@ -380,25 +381,16 @@ class FloatingQAService : Service() {
     }
 
     private fun updateAnswerNotification(text: String, ongoing: Boolean) {
-        if (Build.VERSION.SDK_INT >= 33) {
-            val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                // 无通知权限时至少 Toast 出结果
-                handler.post {
-                    Toast.makeText(this, text.take(120), Toast.LENGTH_LONG).show()
-                }
-                return
-            }
-        }
+        // 结果通知：无权限也 Toast，绝不静默
         val nm = getSystemService(NotificationManager::class.java)
         val open = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        val id = if (ongoing) NOTIF_STATUS else NOTIF_ANSWER
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("屏幕问答")
+            .setContentTitle(if (ongoing) "屏幕问答" else "屏幕问答结果")
             .setContentText(text.take(120))
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(
@@ -408,10 +400,23 @@ class FloatingQAService : Service() {
             .setContentIntent(open)
             .setAutoCancel(!ongoing)
             .setOngoing(ongoing)
-            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
         if (ongoing) b.setProgress(0, 0, true)
-        nm.notify(NOTIF_ANSWER, b.build())
+        try {
+            // 完成时撤掉进度条通知，再弹结果，避免互相覆盖
+            if (!ongoing) runCatching { nm.cancel(NOTIF_STATUS) }
+            nm.notify(id, b.build())
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingQAService", "notify failed", e)
+        }
+        // Toast 兜底，保证一定看得见
+        handler.post {
+            Toast.makeText(
+                this,
+                (if (ongoing) "" else "回答：") + text.take(100),
+                if (ongoing) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     private suspend fun createQAConversation(
