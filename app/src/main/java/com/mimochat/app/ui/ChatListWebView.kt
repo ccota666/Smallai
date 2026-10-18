@@ -248,6 +248,11 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer;}
 .box .bhead button:active{background:rgba(128,128,128,0.2);}
 .box pre{margin:0;padding:10px 12px;overflow-x:auto;}
+.codebody{overflow:hidden;position:relative;}
+.codebody.clamped{max-height:calc(1.55em * 6 + 22px);}
+.codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
+  background:linear-gradient(transparent,${codeBg});pointer-events:none;}
+.codebox-wrap{position:relative;}
 .box pre code{background:transparent;padding:0;font-size:12.5px;line-height:1.55;}
 .box .mathpad{padding:12px;overflow-x:auto;text-align:center;}
 .box .mmpad{padding:10px;overflow-x:auto;}
@@ -503,10 +508,14 @@ function closeFs(){
 }
 
 /* 顶栏：复制 + 全屏 */
-function headHtml(label, copyText, fsHtml, fsTitle){
-  // 只存 label/copy 原文；全屏 HTML 点击时从 DOM 取，避免超长 KaTeX 撑爆按钮属性
+function headHtml(label, copyText, fsHtml, fsTitle, expandLabel){
+  var extra = '';
+  if (expandLabel){
+    extra = '<button data-act="expand">' + esc(expandLabel) + '</button>';
+  }
   return '<div class="bhead"><span>' + esc(label) + '</span>'
     + '<div class="ops">'
+    + extra
     + '<button data-act="copy" data-t="' + esc(copyText) + '">复制</button>'
     + '<button data-act="fs" data-title="' + esc(fsTitle || label) + '">全屏</button>'
     + '</div></div>';
@@ -519,6 +528,18 @@ function bindBoxOps(){
       var body = box.lastChild;
       var copyBtn = head.querySelector('button[data-act=copy]');
       var fsBtn = head.querySelector('button[data-act=fs]');
+      var expBtn = head.querySelector('button[data-act=expand]');
+      if (expBtn){
+        expBtn.onclick = function(e){
+          e.stopPropagation();
+          var bodyEl = box.querySelector('.codebody');
+          if (!bodyEl) return;
+          var clamped = bodyEl.classList.toggle('clamped');
+          var fade = bodyEl.querySelector('.fade');
+          if (fade) fade.style.display = clamped ? '' : 'none';
+          expBtn.textContent = clamped ? ' 展开' : '收起';
+        };
+      }
       if (copyBtn){
         copyBtn.onclick = function(e){
           e.stopPropagation();
@@ -569,7 +590,6 @@ function replaceInlineMath(t){
   }
   return out;
 }
-var SEC_COLORS = ['#2F6FED','#C678DD','#E67E22','#27AE60','#E74C3C','#16A085'];
 function replaceBold(t){
   var out = '', i = 0;
   while (i < t.length){
@@ -681,6 +701,7 @@ function splitRow(line){
 function isDisplayMathStart(line){ return trim(line).indexOf(D + D) === 0; }
 
 /* ---------- block markdown ---------- */
+var SEC_COLORS = ['#2F6FED','#C678DD','#E67E22','#27AE60','#E74C3C','#16A085'];
 function blockMd(src){
   var out = '';
   var lines = String(src == null ? '' : src).split('\n');
@@ -712,15 +733,18 @@ function blockMd(src){
         mbox.appendChild(mbody);
         out += mbox.outerHTML;
       } else {
+        var lineN = code.length;
+        var clamped = lineN > 6;
         var cbox = document.createElement('div');
-        cbox.className = 'box';
+        cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
           '<pre><code class="language-' + esc(lang) + '">' + esc(body) + '</code></pre>',
-          lang + ' 代码');
+          lang + ' 代码', clamped ? ' 展开' : '');
         var cbody = document.createElement('div');
-        cbody.className = 'prewrap';
+        cbody.className = 'codebody' + (clamped ? ' clamped' : '');
         cbody.innerHTML = '<pre><code class="language-' + esc(lang) + '">'
-          + esc(body) + '</code></pre>';
+          + esc(body) + '</code></pre>'
+          + (clamped ? '<div class="fade"></div>' : '');
         cbox.appendChild(cbody);
         out += cbox.outerHTML;
       }
@@ -758,7 +782,16 @@ function blockMd(src){
       while (n < t2.length && t2.charAt(n) === '#') n++;
       window.__secIdx = (window.__secIdx | 0);
       if (n <= 2) window.__secIdx = (window.__secIdx + 1) % 6;
-      out += '<h' + n + ' class="sec-' + (window.__secIdx % 6) + '">'
+      var sc = (window.__secIdx | 0) % 6;
+      var hstyle = '';
+      var bmH = (typeof BOLD_MODE !== 'undefined') ? BOLD_MODE : 'theme';
+      if (bmH === 'colorful' || bmH === 'rainbow') {
+        // 标题与同段加粗同色
+        hstyle = ' style="color:' + SEC_COLORS[sc] + '"';
+      } else if (bmH && bmH !== 'theme' && bmH !== 'inherit') {
+        hstyle = ' style="color:' + bmH + '"';
+      }
+      out += '<h' + n + hstyle + '>'
            + inlineMd(t2.slice(n).replace(/^\s+/, '')) + '</h' + n + '>';
       i++; continue;
     }
