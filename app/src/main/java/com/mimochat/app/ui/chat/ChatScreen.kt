@@ -1216,6 +1216,14 @@ private fun InputBar(
                     }
                 )
                 if (!inputFocused) {
+                    // 语音在发送按钮左边，紧挨着
+                    AppIconButton(
+                        onClick = onVoiceInput,
+                        icon = if (voiceRecording) Icons.Rounded.Close else Icons.Rounded.Mic,
+                        contentDescription = "语音输入",
+                        tint = if (voiceRecording) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.primary
+                    )
                     if (generating) {
                         AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
                     } else {
@@ -1227,14 +1235,6 @@ private fun InputBar(
                             modifier = Modifier.padding(2.dp)
                         )
                     }
-                    // 语音按钮固定在发送按钮右边
-                    AppIconButton(
-                        onClick = onVoiceInput,
-                        icon = if (voiceRecording) Icons.Rounded.Close else Icons.Rounded.Mic,
-                        contentDescription = "语音输入",
-                        tint = if (voiceRecording) MaterialTheme.colorScheme.error
-                               else MaterialTheme.colorScheme.primary
-                    )
                 }
             }
             // 第二行：聚焦时显示功能按钮
@@ -1246,6 +1246,13 @@ private fun InputBar(
                     AppIconButton(onClick = onPickFile, icon = Icons.Rounded.AttachFile, contentDescription = "添加文件")
                     AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
                     Spacer(Modifier.weight(1f))
+                    AppIconButton(
+                        onClick = onVoiceInput,
+                        icon = if (voiceRecording) Icons.Rounded.Close else Icons.Rounded.Mic,
+                        contentDescription = "语音输入",
+                        tint = if (voiceRecording) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.primary
+                    )
                     if (generating) {
                         AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
                     } else {
@@ -1257,13 +1264,6 @@ private fun InputBar(
                             modifier = Modifier.padding(2.dp)
                         )
                     }
-                    AppIconButton(
-                        onClick = onVoiceInput,
-                        icon = if (voiceRecording) Icons.Rounded.Close else Icons.Rounded.Mic,
-                        contentDescription = "语音输入",
-                        tint = if (voiceRecording) MaterialTheme.colorScheme.error
-                               else MaterialTheme.colorScheme.primary
-                    )
                 }
             }
             } // Column

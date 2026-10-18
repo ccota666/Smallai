@@ -191,6 +191,7 @@ fun ImageEditorDialog(
                     Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .padding(vertical = 2.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.Black.copy(alpha = 0.06f)),
                     contentAlignment = Alignment.Center

@@ -186,12 +186,13 @@ private fun chatShellHtml(
     val quoteBg = if (dark) "#222222" else "#F6F6F8"
     val thinkBg = if (dark) "#1A2332" else "#EEF4FF"
     val fsBg = if (dark) "#111111" else "#FFFFFF"
-    val accent = if (boldColor != Color.Unspecified)
-        String.format("#%06X", 0xFFFFFF and boldColor.toArgb())
-    else (if (dark) "#7EB6FF" else "#2F6FED")
+    // 主题色 = 按钮同色（主色）
+    val accent = if (dark) "#7EB6FF" else "#2F6FED"
+    // 加粗：theme=主色 / rainbow=渐变 / colorful=按分段换色 / 自定义色值
     val boldCss = when {
-        boldColor == Color.Unspecified -> "inherit"
+        boldColor == Color.Unspecified -> "theme"
         (boldColor.toArgb() and 0xFFFFFF) == 0x7F7F7F -> "rainbow"
+        (boldColor.toArgb() and 0xFFFFFF) == 0x5F5F5F -> "colorful"
         else -> String.format("#%06X", 0xFFFFFF and boldColor.toArgb())
     }
     val darkFlag = if (dark) "1" else "0"
@@ -232,14 +233,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .content h3{font-size:1.1em;} .content h4{font-size:1.04em;}
 .content p{margin:12px 0;}
 .content ul,.content ol{margin:10px 0 10px 0;padding:0;list-style:none;}
-.content li{margin:6px 0;padding:6px 10px 6px 28px;position:relative;
+.content li{margin:6px 0;padding:8px 12px;position:relative;
   background:rgba(128,128,128,0.07);border-radius:10px;}
-.content li::before{content:'';position:absolute;left:12px;top:1.05em;
-  width:8px;height:2px;border-radius:1px;background:var(--ac);}
-.content ol{counter-reset:li;}
-.content ol li::before{counter-increment:li;content:counter(li) '.';
-  width:auto;height:auto;background:transparent;top:6px;
-  color:var(--ac);font-weight:600;left:8px;}
+.content li::before{display:none;}
 .content code{font-family:ui-monospace,Consolas,monospace;font-size:0.88em;
   background:$codeBg;padding:1px 5px;border-radius:4px;}
 .box{margin:10px 0;border:1px solid $borderC;border-radius:12px;
@@ -277,11 +273,14 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs.on{display:flex;}
 #fs .fs-top{display:flex;justify-content:space-between;align-items:center;
   padding:36px 16px 10px;gap:10px;flex-wrap:wrap;
-  padding-top:calc(36px + env(safe-area-inset-top,0px));}
+  padding-top:calc(36px + env(safe-area-inset-top,0px));
+  position:relative;z-index:20;background:inherit;}
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
 #fs .fs-body{padding:6px 10px 40px;}
-#fs .mathpad,#fs .mmpad,#fs pre{max-width:100%;width:100%;}
+#fs .mathpad,#fs .mmpad,#fs pre{max-width:100%;width:100%;box-sizing:border-box;}
+#fs img{max-width:100%;max-height:70vh;object-fit:contain;}
+#fs .mermaid svg{max-width:100%;height:auto;}
 #fs .mathpad{text-align:left;overflow-x:auto;}
 #fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:hidden;}
 #fs .mermaid{width:100%;min-width:0;}
@@ -570,6 +569,7 @@ function replaceInlineMath(t){
   }
   return out;
 }
+var SEC_COLORS = ['#2F6FED','#C678DD','#E67E22','#27AE60','#E74C3C','#16A085'];
 function replaceBold(t){
   var out = '', i = 0;
   while (i < t.length){
@@ -579,8 +579,19 @@ function replaceBold(t){
     if (e1 < 0){ out += t.slice(i); break; }
     var inner = t.slice(s1 + 2, e1);
     var open = '<strong';
-    if (typeof BOLD_MODE !== 'undefined' && BOLD_MODE === 'rainbow') open += ' class="rainbow"';
-    else if (typeof BOLD_MODE !== 'undefined' && BOLD_MODE && BOLD_MODE !== 'inherit') open += ' style="color:' + BOLD_MODE + '"';
+    var mode = (typeof BOLD_MODE !== 'undefined') ? BOLD_MODE : 'theme';
+    if (mode === 'rainbow') {
+      open += ' class="rainbow"';
+    } else if (mode === 'colorful') {
+      // 按当前 h/--- 分段序号取色
+      var idx = (window.__secIdx | 0) % SEC_COLORS.length;
+      open += ' style="color:' + SEC_COLORS[idx] + '"';
+    } else if (mode && mode !== 'theme' && mode !== 'inherit') {
+      open += ' style="color:' + mode + '"';
+    } else {
+      // theme：跟随主色
+      open += ' style="color:var(--ac)"';
+    }
     open += '>';
     out += t.slice(i, s1) + open + inner + '</strong>';
     i = e1 + 2;

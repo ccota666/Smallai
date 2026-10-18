@@ -216,10 +216,12 @@ private fun ThemeSelector(current: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun BoldColorPicker(current: Int, onChange: (Int) -> Unit) {
     // ARGB 高位 0x7F7F7F 作为彩虹标记
-    val RAINBOW = (0x7F7F7F)
+    val RAINBOW = (0x7F7F7F)   // 彩虹：单字渐变
+    val COLORFUL = (0x5F5F5F)  // 五颜六色：按分段换色
     val presets = listOf(
         0 to "主题色",
         RAINBOW to "彩虹",
+        COLORFUL to "五彩",
         android.graphics.Color.parseColor("#E67E22") to "橙",
         android.graphics.Color.parseColor("#C0392B") to "红",
         android.graphics.Color.parseColor("#2980B9") to "蓝",
@@ -249,6 +251,16 @@ private fun BoldColorPicker(current: Int, onChange: (Int) -> Unit) {
                                             listOf(
                                                 Color(0xFFFF6B6B), Color(0xFFFEC89A),
                                                 Color(0xFF95D5B2), Color(0xFF4D96FF), Color(0xFFB197FC)
+                                            )
+                                        ),
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                } else if (color == COLORFUL) {
+                                    mod.background(
+                                        androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                            listOf(
+                                                Color(0xFF2F6FED), Color(0xFFC678DD), Color(0xFFE67E22),
+                                                Color(0xFF27AE60), Color(0xFFE74C3C), Color(0xFF16A085)
                                             )
                                         ),
                                         RoundedCornerShape(10.dp)
