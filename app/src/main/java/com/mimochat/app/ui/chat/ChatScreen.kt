@@ -82,6 +82,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -222,6 +223,11 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val voiceRecorder = remember { com.mimochat.app.ui.VoiceRecorder(context) }
+    var voiceRecording by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose { voiceRecorder.cancel() }
+    }
     val listState = rememberLazyListState()
 
     // 拍照 → 图片编辑 → 带图提问
@@ -235,9 +241,26 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
     val fileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
-                val att = FilePicker.toAttachment(context, uri)
-                if (att != null) attachments = attachments + att
-                else Toast.makeText(context, "暂不支持该文件类型（支持图片与文本）", Toast.LENGTH_SHORT).show()
+                val mime = context.contentResolver.getType(uri) ?: ""
+                if (mime.startsWith("audio/")) {
+                    // 音频文件 → 识别成文字进输入框
+                    Toast.makeText(context, "正在识别音频…", Toast.LENGTH_SHORT).show()
+                    try {
+                        val f = java.io.File(context.cacheDir, "asr_${System.currentTimeMillis()}.m4a")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            f.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        val txt = com.mimochat.app.data.MiMoAsr().transcribe(settings, f)
+                        if (txt.isNotBlank()) inputText = (inputText + " " + txt).trim()
+                        else Toast.makeText(context, "未识别到内容", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "识别失败：${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    val att = FilePicker.toAttachment(context, uri)
+                    if (att != null) attachments = attachments + att
+                    else Toast.makeText(context, "暂不支持该文件类型（支持图片、文本、音频）", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -443,7 +466,47 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
                 onRemoveAttachment = { attachments = attachments - it },
                 onEditImage = { path -> editingImagePath = path },
                 onPickFile = { fileLauncher.launch(arrayOf("*/*")) },
-                onVoiceInput = { Toast.makeText(context, "语音输入（MiMo ASR）即将接入", Toast.LENGTH_SHORT).show() },
+                voiceRecording = voiceRecording,
+                onVoiceInput = {
+                    if (voiceRecording) {
+                        // 停止录音并识别
+                        val f = voiceRecorder.stop()
+                        voiceRecording = false
+                        if (f != null && f.length() > 0) {
+                            Toast.makeText(context, "识别中…", Toast.LENGTH_SHORT).show()
+                            scope.launch {
+                                try {
+                                    val asr = com.mimochat.app.data.MiMoAsr()
+                                    val txt = asr.transcribe(settings, f)
+                                    if (txt.isNotBlank()) {
+                                        inputText = (inputText + " " + txt).trim()
+                                    } else {
+                                        Toast.makeText(context, "没听清，请重试", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "识别失败：${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    } else {
+                        // 开始录音
+                        if (android.os.Build.VERSION.SDK_INT >= 23) {
+                            if (context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                                != android.content.pm.PackageManager.PERMISSION_GRANTED
+                            ) {
+                                Toast.makeText(context, "请先允许录音权限", Toast.LENGTH_SHORT).show()
+                                return@InputBar
+                            }
+                        }
+                        try {
+                            voiceRecorder.start()
+                            voiceRecording = true
+                            Toast.makeText(context, "正在录音，再点一次结束", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "无法录音：${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
                 onTakePhoto = {
                     try {
                         val dir = java.io.File(context.cacheDir, "camera").apply { mkdirs() }
@@ -1057,6 +1120,7 @@ private fun InputBar(
     onPickFile: () -> Unit,
     onTakePhoto: () -> Unit = {},
     onVoiceInput: () -> Unit = {},
+    voiceRecording: Boolean = false,
     onSend: () -> Unit,
     generating: Boolean,
     onStop: () -> Unit
@@ -1163,6 +1227,14 @@ private fun InputBar(
                             modifier = Modifier.padding(2.dp)
                         )
                     }
+                    // 语音按钮固定在发送按钮右边
+                    AppIconButton(
+                        onClick = onVoiceInput,
+                        icon = if (voiceRecording) Icons.Rounded.Close else Icons.Rounded.Mic,
+                        contentDescription = "语音输入",
+                        tint = if (voiceRecording) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.primary
+                    )
                 }
             }
             // 第二行：聚焦时显示功能按钮
@@ -1173,11 +1245,6 @@ private fun InputBar(
                 ) {
                     AppIconButton(onClick = onPickFile, icon = Icons.Rounded.AttachFile, contentDescription = "添加文件")
                     AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
-                    AppIconButton(
-                        onClick = onVoiceInput,
-                        icon = Icons.Rounded.Mic,
-                        contentDescription = "语音输入"
-                    )
                     Spacer(Modifier.weight(1f))
                     if (generating) {
                         AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
@@ -1190,6 +1257,13 @@ private fun InputBar(
                             modifier = Modifier.padding(2.dp)
                         )
                     }
+                    AppIconButton(
+                        onClick = onVoiceInput,
+                        icon = if (voiceRecording) Icons.Rounded.Close else Icons.Rounded.Mic,
+                        contentDescription = "语音输入",
+                        tint = if (voiceRecording) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.primary
+                    )
                 }
             }
             } // Column

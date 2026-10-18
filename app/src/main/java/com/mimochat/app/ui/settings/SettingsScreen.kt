@@ -215,8 +215,11 @@ private fun ThemeSelector(current: Int, onSelect: (Int) -> Unit) {
 /** 加粗/关键词颜色：预设色板 + 跟随主题 */
 @Composable
 private fun BoldColorPicker(current: Int, onChange: (Int) -> Unit) {
+    // ARGB 高位 0x7F7F7F 作为彩虹标记
+    val RAINBOW = (0x7F7F7F)
     val presets = listOf(
         0 to "主题色",
+        RAINBOW to "彩虹",
         android.graphics.Color.parseColor("#E67E22") to "橙",
         android.graphics.Color.parseColor("#C0392B") to "红",
         android.graphics.Color.parseColor("#2980B9") to "蓝",
@@ -239,10 +242,25 @@ private fun BoldColorPicker(current: Int, onChange: (Int) -> Unit) {
                         Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (color == 0) MaterialTheme.colorScheme.surfaceVariant
-                                else Color(color)
-                            )
+                            .let { mod ->
+                                if (color == RAINBOW) {
+                                    mod.background(
+                                        androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                            listOf(
+                                                Color(0xFFFF6B6B), Color(0xFFFEC89A),
+                                                Color(0xFF95D5B2), Color(0xFF4D96FF), Color(0xFFB197FC)
+                                            )
+                                        ),
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                } else {
+                                    mod.background(
+                                        if (color == 0) MaterialTheme.colorScheme.surfaceVariant
+                                        else Color(color),
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                }
+                            }
                             .then(
                                 if (selected) Modifier.border(
                                     2.dp,

@@ -189,8 +189,11 @@ private fun chatShellHtml(
     val accent = if (boldColor != Color.Unspecified)
         String.format("#%06X", 0xFFFFFF and boldColor.toArgb())
     else (if (dark) "#7EB6FF" else "#2F6FED")
-    val boldCss = if (boldColor == Color.Unspecified) "inherit"
-    else String.format("#%06X", 0xFFFFFF and boldColor.toArgb())
+    val boldCss = when {
+        boldColor == Color.Unspecified -> "inherit"
+        (boldColor.toArgb() and 0xFFFFFF) == 0x7F7F7F -> "rainbow"
+        else -> String.format("#%06X", 0xFFFFFF and boldColor.toArgb())
+    }
     val darkFlag = if (dark) "1" else "0"
     val topCss = topInsetPx.coerceAtLeast(0)
     val botCss = bottomInsetPx.coerceAtLeast(0)
@@ -228,8 +231,15 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .content h1{font-size:1.3em;} .content h2{font-size:1.2em;}
 .content h3{font-size:1.1em;} .content h4{font-size:1.04em;}
 .content p{margin:12px 0;}
-.content ul,.content ol{margin:10px 0 10px 1.3em;padding:0;}
-.content li{margin:3px 0;}
+.content ul,.content ol{margin:10px 0 10px 0;padding:0;list-style:none;}
+.content li{margin:6px 0;padding:6px 10px 6px 28px;position:relative;
+  background:rgba(128,128,128,0.07);border-radius:10px;}
+.content li::before{content:'';position:absolute;left:12px;top:1.05em;
+  width:8px;height:2px;border-radius:1px;background:var(--ac);}
+.content ol{counter-reset:li;}
+.content ol li::before{counter-increment:li;content:counter(li) '.';
+  width:auto;height:auto;background:transparent;top:6px;
+  color:var(--ac);font-weight:600;left:8px;}
 .content code{font-family:ui-monospace,Consolas,monospace;font-size:0.88em;
   background:$codeBg;padding:1px 5px;border-radius:4px;}
 .box{margin:10px 0;border:1px solid $borderC;border-radius:12px;
@@ -253,6 +263,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .content th,.content td{border:1px solid $borderC;padding:6px 9px;text-align:left;}
 .content th{background:$codeBg;font-weight:600;}
 .content strong{font-weight:700;color:var(--bc,inherit);}
+.content a{color:var(--ac);}
+.sec-0{color:#2F6FED;} .sec-1{color:#C678DD;} .sec-2{color:#E67E22;}
+.sec-3{color:#27AE60;} .sec-4{color:#E74C3C;} .sec-5{color:#16A085;}
+.content strong.rainbow{background:linear-gradient(90deg,
+  #FF6B6B,#FEC89A,#95D5B2,#4D96FF,#B197FC);
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
 .content a{color:var(--ac);text-decoration:underline;}
 .content img{max-width:100%;border-radius:10px;}
 /* 全屏层 */
@@ -387,27 +403,35 @@ function toggleRotate(){
     resetFsView();
   }, 320);
 }
-/* 全屏缩放/平移：1x~6x，1x 即全屏适配（绝不小于屏）
-   双指绕捏合点缩放；放大后单指拖动平移 */
+/* 全屏缩放 —— 相册式（照片放大逻辑）：
+   - transform-origin 0 0，配 translate+scale
+   - 绕捏合中点缩放，内容不会「往上跑」
+   - 不改 width，避免重排导致位移/提前消失
+   - 1x=铺满屏，最大 6x；放大后可单指平移 */
 var fsS = 1, fsX = 0, fsY = 0;
 var pinchDist = 0, panLast = null;
 
 function fsBody(){ return document.getElementById('fsBody'); }
 
-function applyFsTransform(){
+function clampFs(){
   var b = fsBody();
   if (!b) return;
+  // offsetWidth/Height 是未缩放的布局尺寸
+  var w = b.offsetWidth * fsS;
+  var h = b.scrollHeight * fsS;
   var vw = window.innerWidth, vh = window.innerHeight;
-  // 布局宽度固定为「屏幕宽/scale」，放大时内容变大但不重排成窄条
-  b.style.width = (100 / fsS) + '%';
-  var cw = b.scrollWidth * fsS;
-  var ch = b.scrollHeight * fsS;
-  var minX = Math.min(0, vw - cw);
-  var minY = Math.min(0, vh - ch);
+  var minX = Math.min(0, vw - w);
+  var minY = Math.min(0, vh - h);
   if (fsX > 0) fsX = 0;
   if (fsY > 0) fsY = 0;
   if (fsX < minX) fsX = minX;
   if (fsY < minY) fsY = minY;
+}
+
+function applyFsTransform(){
+  var b = fsBody();
+  if (!b) return;
+  clampFs();
   b.style.transformOrigin = '0 0';
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
 }
@@ -417,6 +441,7 @@ function resetFsView(){
   var b = fsBody();
   if (b){
     b.style.transform = '';
+    b.style.transformOrigin = '';
     b.style.width = '';
   }
 }
@@ -445,17 +470,14 @@ function bindFsGestures(){
     if (e.touches.length === 2 && pinchDist > 0){
       e.preventDefault();
       var d = distOf(e.touches);
-      var mid = {
-        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
-      };
+      var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       var s0 = fsS;
-      // 放大最多 6x，最小回到 1x（铺满屏幕，不会再缩小到比屏还小）
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
       if (s1 !== s0){
-        // 绕捏合中点缩放
-        fsX = mid.x - (mid.x - fsX) * (s1 / s0);
-        fsY = mid.y - (mid.y - fsY) * (s1 / s0);
+        // 绕捏合中点：保持指下内容不动（相册式）
+        fsX = midX - (midX - fsX) * (s1 / s0);
+        fsY = midY - (midY - fsY) * (s1 / s0);
         fsS = s1;
       }
       pinchDist = d;
@@ -469,13 +491,8 @@ function bindFsGestures(){
     }
   }, {passive:false});
 
-  el.addEventListener('touchend', function(){
-    pinchDist = 0; panLast = null;
-  }, {passive:true});
-
-  el.addEventListener('touchcancel', function(){
-    pinchDist = 0; panLast = null;
-  }, {passive:true});
+  el.addEventListener('touchend', function(){ pinchDist = 0; panLast = null; }, {passive:true});
+  el.addEventListener('touchcancel', function(){ pinchDist = 0; panLast = null; }, {passive:true});
 }
 
 function closeFs(){
@@ -553,6 +570,23 @@ function replaceInlineMath(t){
   }
   return out;
 }
+function replaceBold(t){
+  var out = '', i = 0;
+  while (i < t.length){
+    var s1 = t.indexOf('**', i);
+    if (s1 < 0){ out += t.slice(i); break; }
+    var e1 = t.indexOf('**', s1 + 2);
+    if (e1 < 0){ out += t.slice(i); break; }
+    var inner = t.slice(s1 + 2, e1);
+    var open = '<strong';
+    if (typeof BOLD_MODE !== 'undefined' && BOLD_MODE === 'rainbow') open += ' class="rainbow"';
+    else if (typeof BOLD_MODE !== 'undefined' && BOLD_MODE && BOLD_MODE !== 'inherit') open += ' style="color:' + BOLD_MODE + '"';
+    open += '>';
+    out += t.slice(i, s1) + open + inner + '</strong>';
+    i = e1 + 2;
+  }
+  return out;
+}
 function replaceLink(t){
   var out = '', i = 0;
   while (i < t.length){
@@ -570,6 +604,7 @@ function replaceLink(t){
   }
   return out;
 }
+var BOLD_MODE = 'inherit';
 function inlineMd(t){
   t = esc(t);
   t = replaceInlineMath(t);
@@ -577,7 +612,7 @@ function inlineMd(t){
   for (var i = 0; i < parts.length; i++)
     out += (i % 2 === 1) ? '<code>' + parts[i] + '</code>' : parts[i];
   t = out;
-  t = replaceBetween(t, '**', '<strong>', '</strong>');
+  t = replaceBold(t);
   t = replaceBetween(t, '*', '<em>', '</em>');
   t = replaceLink(t);
   return t;
@@ -710,7 +745,10 @@ function blockMd(src){
     if (isHeading(line)){
       var t2 = trim(line), n = 0;
       while (n < t2.length && t2.charAt(n) === '#') n++;
-      out += '<h' + n + '>' + inlineMd(t2.slice(n).replace(/^\s+/, '')) + '</h' + n + '>';
+      window.__secIdx = (window.__secIdx | 0);
+      if (n <= 2) window.__secIdx = (window.__secIdx + 1) % 6;
+      out += '<h' + n + ' class="sec-' + (window.__secIdx % 6) + '">'
+           + inlineMd(t2.slice(n).replace(/^\s+/, '')) + '</h' + n + '>';
       i++; continue;
     }
     if (line.indexOf('|') >= 0 && i + 1 < lines.length && isTableSep(lines[i+1])){
@@ -1000,6 +1038,10 @@ window.__update = function(msgs, streaming){
   renderChat(msgs, streaming);
 };
 document.body.setAttribute('data-dark', '$darkFlag');
+try {
+  var bc = getComputedStyle(document.body).getPropertyValue('--bc').trim();
+  if (bc) BOLD_MODE = bc;
+} catch(e) {}
 </script>
 </body>
 </html>

@@ -75,7 +75,8 @@ fun ImageEditorDialog(
 ) {
     var baseBmp by remember { mutableStateOf<Bitmap?>(null) }
     var rotQuarter by remember { mutableStateOf(0) } // 0..3, 每次 90°
-    var cropNorm by remember { mutableStateOf<Pair<Pair<Float, Float>, Pair<Float, Float>>?>(null) }
+    // 初始裁剪框覆盖整张图，用户再拖角/边缩小
+    var cropNorm by remember { mutableStateOf<Pair<Pair<Float, Float>, Pair<Float, Float>>?>((0f to 0f) to (1f to 1f)) }
     var cropDragging by remember { mutableStateOf(false) } // (left,top) to (right,bottom) 0..1
     var quality by remember { mutableFloatStateOf(85f) }
     var preview by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -152,10 +153,10 @@ fun ImageEditorDialog(
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!cropDragging) IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, "关闭") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, "关闭") }
                     Text("编辑图片", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     Button(
-                        enabled = preview != null && !saving && !cropDragging,
+                        enabled = preview != null && !saving,
                         onClick = {
                             saving = true
                             val q = quality.toInt()
@@ -185,6 +186,7 @@ fun ImageEditorDialog(
 
                 // 预览：裁剪直接在图上拖框
                 val base = baseBmp
+                // 图片区占满剩余空间，图片完整可见不被裁切
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -196,31 +198,20 @@ fun ImageEditorDialog(
                     if (base == null) {
                         Text("加载中…", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        Box(Modifier.fillMaxSize().padding(4.dp),
-                            contentAlignment = Alignment.Center) {
-                            CropPreview(
-                                bitmap = base,
-                                rotationQuarter = rotQuarter,
-                                crop = cropNorm,
-                                onCropChange = { cropNorm = it },
-                                onDragState = { cropDragging = it }
-                            )
-                        }
+                        CropPreview(
+                            bitmap = base,
+                            rotationQuarter = rotQuarter,
+                            crop = cropNorm,
+                            onCropChange = { cropNorm = it },
+                            onDragState = {}
+                        )
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                if (cropDragging) {
-                    Text(
-                        "拖动选区 · 松手完成",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-                    )
-                }
                 // 旋转：仅 90°
-                if (!cropDragging) Row(
+                Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -250,10 +241,10 @@ fun ImageEditorDialog(
                     ) { Text("重置", style = MaterialTheme.typography.labelSmall) }
                 }
 
-                if (!cropDragging) Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(6.dp))
 
                 // 压缩率
-                if (!cropDragging) Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("压缩率", style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(48.dp))
                     Slider(
                         value = quality,
@@ -267,8 +258,8 @@ fun ImageEditorDialog(
                         modifier = Modifier.width(40.dp)
                     )
                 }
-                if (!cropDragging) Text(
-                    "约 ${formatBytes(previewBytes)} · 裁剪：在图上拖出选区",
+                Text(
+                    "约 ${formatBytes(previewBytes)} · 拖角/边调整裁剪框，拖内部移动",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -313,7 +304,6 @@ private fun CropPreview(
     Box(
         Modifier
             .fillMaxWidth()
-            .heightIn(max = 560.dp)
             .aspectRatio(aspect)
             .clip(RoundedCornerShape(8.dp))
     ) {
@@ -335,10 +325,6 @@ private fun CropPreview(
                             val kind = hitTest(nx, ny, cur)
                             dragging = kind
                             cropAtStart = cur
-                            if (kind == "New" && cur != null) {
-                                onCropChange(null)
-                                cropAtStart = null
-                            }
                         },
                         onDrag = { change, _ ->
                             change.consume()
@@ -348,15 +334,6 @@ private fun CropPreview(
                             val dy = ny - dragStart.y
                             val st = cropAtStart
                             when (dragging) {
-                                "New" -> {
-                                    val l = min(dragStart.x, nx).coerceIn(0f, 1f)
-                                    val t = min(dragStart.y, ny).coerceIn(0f, 1f)
-                                    val r = max(dragStart.x, nx).coerceIn(0f, 1f)
-                                    val b = max(dragStart.y, ny).coerceIn(0f, 1f)
-                                    if (r - l > 0.03f && b - t > 0.03f) {
-                                        onCropChange((l to t) to (r to b))
-                                    }
-                                }
                                 "Move" -> if (st != null) {
                                     val w = st.second.first - st.first.first
                                     val h = st.second.second - st.first.second
@@ -448,7 +425,7 @@ private fun hitTest(
     ny: Float,
     crop: Pair<Pair<Float, Float>, Pair<Float, Float>>?
 ): String {
-    if (crop == null) return "New"
+    if (crop == null) return "Move"
     val (lt, rb) = crop
     val edge = 0.05f
     val nearL = kotlin.math.abs(nx - lt.first) < edge
@@ -466,7 +443,7 @@ private fun hitTest(
         nearT -> "N"
         nearB -> "S"
         inside -> "Move"
-        else -> "New"
+        else -> "Move"
     }
 }
 
