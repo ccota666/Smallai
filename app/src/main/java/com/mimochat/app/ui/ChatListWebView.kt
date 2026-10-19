@@ -1040,20 +1040,20 @@ function cancelFollow(){
 function isProg(){ return Date.now() < window.__progUntil; }
 }
 
+// 手指一碰屏幕就取消跟随，不需要「使劲滑」
 document.addEventListener('touchstart', function(e){
   if (e.touches.length === 1){
     _ty = e.touches[0].clientY;
     _moved = false;
+    cancelFollow();
   }
 }, {passive:true});
 
 document.addEventListener('touchmove', function(e){
-  if (isProg()) return;
   if (e.touches.length === 1 && _ty != null){
-    // 手指真正动了（>6px）才算滑动，点按钮不误伤
-    if (Math.abs(e.touches[0].clientY - _ty) > 6) {
+    if (Math.abs(e.touches[0].clientY - _ty) > 2) {
       _moved = true;
-      cancelFollow();   // 立即取消，不等 scroll
+      cancelFollow();
     }
   }
   notifyBottom();
@@ -1062,7 +1062,6 @@ document.addEventListener('touchmove', function(e){
 document.addEventListener('touchend', function(){ _ty = null; }, {passive:true});
 
 document.addEventListener('wheel', function(e){
-  if (isProg()) return;
   if (e.deltaY !== 0) cancelFollow();
   notifyBottom();
 }, {passive:true});
