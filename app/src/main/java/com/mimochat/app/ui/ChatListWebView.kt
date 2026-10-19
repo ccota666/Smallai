@@ -1016,46 +1016,68 @@ function atBottom(){
 }
 function notifyBottom(){
   var near = atBottom();
-  // 程序滚动（我们自己的 scrollTo / DOM 更新）不算用户操作；
-  // 其它任何滚动一旦离开底部 → 取消跟随（含惯性、拖动）
-  if (!window.__progScroll && !near) {
-    window.__followMode = false;
-  }
   try { Android.onScroll(near && window.__followMode); } catch(e) {}
 }
-// 用户滑动检测：只认 touchmove/wheel 的真实位移，且方向是离开底部
-var _ty = null;
+
+/* —— 用户一操作就取消跟随（不依赖“是否离开底部”）——
+   流式刷新快时 atBottom 会抖，猜位置不可靠；
+   手势/滚轮/键盘是用户真实意图，立刻生效。 */
+var _ty = null, _moved = false;
+function cancelFollow(){
+  if (!window.__progScroll) window.__followMode = false;
+}
+
 document.addEventListener('touchstart', function(e){
-  if (e.touches.length === 1) _ty = e.touches[0].clientY;
+  if (e.touches.length === 1){
+    _ty = e.touches[0].clientY;
+    _moved = false;
+  }
 }, {passive:true});
+
 document.addEventListener('touchmove', function(e){
   if (window.__progScroll) return;
   if (e.touches.length === 1 && _ty != null){
-    var dy = e.touches[0].clientY - _ty;
-    // 向上滑（想看旧消息）或已不在底部 → 进入 NotFollowing
-    if (dy < -8 || (Math.abs(dy) > 8 && !atBottom())){
-      window.__followMode = false;
+    // 手指真正动了（>6px）才算滑动，点按钮不误伤
+    if (Math.abs(e.touches[0].clientY - _ty) > 6) {
+      _moved = true;
+      cancelFollow();   // 立即取消，不等 scroll
     }
   }
   notifyBottom();
 }, {passive:true});
+
 document.addEventListener('touchend', function(){ _ty = null; }, {passive:true});
+
 document.addEventListener('wheel', function(e){
   if (window.__progScroll) return;
-  if (e.deltaY < -4) window.__followMode = false;
+  if (e.deltaY !== 0) cancelFollow();
   notifyBottom();
 }, {passive:true});
+
+document.addEventListener('keydown', function(e){
+  if (window.__progScroll) return;
+  var k = e.key;
+  if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'PageUp' ||
+      k === 'PageDown' || k === 'Home' || k === 'End' || k === ' ') {
+    cancelFollow();
+  }
+}, {passive:true});
+
 window.addEventListener('scroll', notifyBottom, {passive:true});
 
+// 点「返回底部」或用户提问 → 恢复跟随
 window.__follow = function(){
-  // 点「返回底部」或用户提问 → Following
   window.__followMode = true;
   window.__progScroll = true;
   window.scrollTo(0, document.body.scrollHeight);
   requestAnimationFrame(function(){
-    setTimeout(function(){ window.__progScroll = false; notifyBottom(); }, 30);
+    setTimeout(function(){
+      window.__progScroll = false;
+      notifyBottom();
+    }, 30);
   });
 };
+
 window.__jump = function(id){
   var el = document.getElementById('msg-' + id);
   if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
