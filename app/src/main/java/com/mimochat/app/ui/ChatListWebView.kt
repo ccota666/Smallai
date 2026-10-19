@@ -970,7 +970,7 @@ function renderChat(msgs, streaming){
   renderMath(el); renderCode(el); renderMermaid();
   bindBoxOps(); bindLinks();
   // 跟随：贴底；用户已操作：恢复原滚动位置，绝不抢
-  window.__progScroll = true;
+  window.__progUntil = Date.now() + 80;
   if (window.__followMode) {
     window.scrollTo(0, document.body.scrollHeight);
   } else {
@@ -978,7 +978,8 @@ function renderChat(msgs, streaming){
   }
   requestAnimationFrame(function(){
     setTimeout(function(){
-      window.__progScroll = false;
+      window.__progUntil = 0;
+function isProg(){ return Date.now() < window.__progUntil; }
       notifyBottom();
     }, 30);
   });
@@ -1009,7 +1010,8 @@ function bindLinks(){
    Following --用户再滑动--> NotFollowing
 */
 window.__followMode = true;
-window.__progScroll = false;
+window.__progUntil = 0;
+function isProg(){ return Date.now() < window.__progUntil; }
 
 function atBottom(){
   return (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 48);
@@ -1024,7 +1026,11 @@ function notifyBottom(){
    手势/滚轮/键盘是用户真实意图，立刻生效。 */
 var _ty = null, _moved = false;
 function cancelFollow(){
-  if (!window.__progScroll) window.__followMode = false;
+  // 用户手势必须无条件取消跟随。
+  // 不能用 __progScroll 判断：流式每个 token 都会把它置 true，手势就永远被忽略。
+  window.__followMode = false;
+  window.__progUntil = 0;
+function isProg(){ return Date.now() < window.__progUntil; }
 }
 
 document.addEventListener('touchstart', function(e){
@@ -1035,7 +1041,7 @@ document.addEventListener('touchstart', function(e){
 }, {passive:true});
 
 document.addEventListener('touchmove', function(e){
-  if (window.__progScroll) return;
+  if (isProg()) return;
   if (e.touches.length === 1 && _ty != null){
     // 手指真正动了（>6px）才算滑动，点按钮不误伤
     if (Math.abs(e.touches[0].clientY - _ty) > 6) {
@@ -1049,13 +1055,13 @@ document.addEventListener('touchmove', function(e){
 document.addEventListener('touchend', function(){ _ty = null; }, {passive:true});
 
 document.addEventListener('wheel', function(e){
-  if (window.__progScroll) return;
+  if (isProg()) return;
   if (e.deltaY !== 0) cancelFollow();
   notifyBottom();
 }, {passive:true});
 
 document.addEventListener('keydown', function(e){
-  if (window.__progScroll) return;
+  if (isProg()) return;
   var k = e.key;
   if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'PageUp' ||
       k === 'PageDown' || k === 'Home' || k === 'End' || k === ' ') {
@@ -1068,11 +1074,12 @@ window.addEventListener('scroll', notifyBottom, {passive:true});
 // 点「返回底部」或用户提问 → 恢复跟随
 window.__follow = function(){
   window.__followMode = true;
-  window.__progScroll = true;
+  window.__progUntil = Date.now() + 80;
   window.scrollTo(0, document.body.scrollHeight);
   requestAnimationFrame(function(){
     setTimeout(function(){
-      window.__progScroll = false;
+      window.__progUntil = 0;
+function isProg(){ return Date.now() < window.__progUntil; }
       notifyBottom();
     }, 30);
   });
@@ -1090,7 +1097,7 @@ window.__update = function(msgs, streaming){
   var streamNode = document.getElementById('msg-stream');
   if (streamNode && streaming && streaming.active && msgs.length === window.__lastMsgCount){
     var prevTop = window.scrollY;
-    window.__progScroll = true;   // DOM 更新期间的 scroll 不算用户操作
+    window.__progUntil = Date.now() + 80;   // DOM 更新期间的 scroll 不算用户操作
     streamNode.outerHTML = streamHtml(streaming);
     var list = document.getElementById('list');
     renderMath(list); renderCode(list);
@@ -1102,7 +1109,8 @@ window.__update = function(msgs, streaming){
     }
     requestAnimationFrame(function(){
       setTimeout(function(){
-        window.__progScroll = false;
+        window.__progUntil = 0;
+function isProg(){ return Date.now() < window.__progUntil; }
         notifyBottom();
       }, 30);
     });
