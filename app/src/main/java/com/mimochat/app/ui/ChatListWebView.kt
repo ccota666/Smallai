@@ -10,7 +10,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -53,6 +55,7 @@ fun ChatListWebView(
         }
     }
 
+    var lastFollowTrigger by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
@@ -148,7 +151,11 @@ fun ChatListWebView(
                 "window.__update && window.__update($messagesJson, $streamingJson);",
                 null
             )
-            if (scrollTrigger != 0L) {
+            // 关键：scrollTrigger 必须「变化才触发一次」。
+            // update 每次重组都会跑，若只判断 !=0 就会每帧调 __follow()，
+            // 用户取消跟随后立刻被拉回来。
+            if (scrollTrigger != 0L && scrollTrigger != lastFollowTrigger) {
+                lastFollowTrigger = scrollTrigger
                 wv.evaluateJavascript(
                     "window.__follow && window.__follow();", null
                 )
