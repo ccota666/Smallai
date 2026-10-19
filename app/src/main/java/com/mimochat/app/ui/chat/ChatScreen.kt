@@ -467,6 +467,7 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
                 onEditImage = { path -> editingImagePath = path },
                 onPickFile = { fileLauncher.launch(arrayOf("*/*")) },
                 voiceRecording = voiceRecording,
+                modelsCsv = settings.models,
                 onVoiceInput = {
                     if (voiceRecording) {
                         // 停止录音并识别
@@ -1131,6 +1132,7 @@ private fun InputBar(
     onTakePhoto: () -> Unit = {},
     onVoiceInput: () -> Unit = {},
     voiceRecording: Boolean = false,
+    modelsCsv: String = "",
     onSend: () -> Unit,
     generating: Boolean,
     onStop: () -> Unit
@@ -1215,10 +1217,14 @@ private fun InputBar(
                     decorationBox = { innerTextField ->
                         Box(Modifier.padding(vertical = 8.dp)) {
                             if (text.isEmpty()) {
+                                val exp = com.mimochat.app.data.ModelsParser.isExpensive(
+                                    modelsCsv, currentModel
+                                )
                                 Text(
-                                    "$currentModel…",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = colors.onSurfaceVariant.copy(alpha = 0.7f)
+                                    currentModel,   // 不带省略号
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (exp) Color(0xFFE74C3C)
+                                            else colors.onSurfaceVariant.copy(alpha = 0.7f)
                                 )
                             }
                             innerTextField()

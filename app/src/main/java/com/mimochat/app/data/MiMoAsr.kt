@@ -1,19 +1,25 @@
 package com.mimochat.app.data
 
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * MiMo-V2.5-ASR 语音识别（OpenAI 兼容 audio/transcriptions）。
- * 上传音频文件 → 返回识别文字。
+ * MiMo-V2.5-ASR 语音识别。
+ *
+ * 官方是 OpenAI Chat Completions 兼容，不是 /audio/transcriptions：
+ *   POST {base}/chat/completions
+ *   model: mimo-v2.5-asr
+ *   messages[0].content = [{type:"input_audio", input_audio:{data:"data:audio/wav;base64,..."}}]
+ * 音频仅支持 mp3 / wav。
  */
 class MiMoAsr {
 
@@ -23,42 +29,58 @@ class MiMoAsr {
         .writeTimeout(120, TimeUnit.SECONDS)
         .build()
 
-    /** 上传音频，返回识别文本。 */
     suspend fun transcribe(
         settings: AppSettings,
         audioFile: File,
-        model: String = "mimo-v2.5-asr",
         language: String = "zh"
     ): String = withContext(Dispatchers.IO) {
-        val url = settings.baseUrl.trimEnd('/') + "/audio/transcriptions"
-        val body = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("model", model)
-            .addFormDataPart("language", language)
-            .addFormDataPart(
-                "file", audioFile.name,
-                audioFile.asRequestBody("audio/mpeg".toMediaType())
+        val mime = if (audioFile.extension.equals("mp3", true)) "audio/mpeg" else "audio/wav"
+        val b64 = Base64.encodeToString(audioFile.readBytes(), Base64.NO_WRAP)
+        val dataUrl = "data:$mime;base64,$b64"
+
+        val body = JSONObject().apply {
+            put("model", "mimo-v2.5-asr")
+            put("stream", false)
+            put("asr_options", JSONObject().put("language", language))
+            put(
+                "messages",
+                JSONArray().put(
+                    JSONObject().put("role", "user").put(
+                        "content",
+                        JSONArray().put(
+                            JSONObject()
+                                .put("type", "input_audio")
+                                .put("input_audio", JSONObject().put("data", dataUrl))
+                        )
+                    )
+                )
             )
-            .build()
+        }
+
+        val url = settings.baseUrl.trimEnd('/') + "/chat/completions"
         val req = Request.Builder()
             .url(url)
             .addHeader("api-key", settings.apiKey)
             .addHeader("Authorization", "Bearer " + settings.apiKey)
-            .post(body)
+            .addHeader("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
         client.newCall(req).execute().use { resp ->
             val raw = resp.body?.string() ?: ""
             if (!resp.isSuccessful) {
                 val msg = runCatching {
-                    JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
-                }.getOrDefault(raw)
+                    JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw.take(200)
+                }.getOrDefault(raw.take(200))
                 throw MiMoApiException("ASR HTTP ${resp.code} $msg")
             }
-            // OpenAI 兼容：{"text": "..."}
-            runCatching { JSONObject(raw).optString("text") }
-                .getOrNull()?.takeIf { it.isNotBlank() }
-                ?: raw.trim()
+            val json = JSONObject(raw)
+            json.optJSONArray("choices")
+                ?.optJSONObject(0)
+                ?.optJSONObject("message")
+                ?.optString("content")
+                ?.trim()
+                ?: throw MiMoApiException("ASR 返回无内容")
         }
     }
 }

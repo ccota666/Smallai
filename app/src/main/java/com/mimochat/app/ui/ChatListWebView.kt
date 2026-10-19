@@ -970,16 +970,18 @@ function renderChat(msgs, streaming){
   renderMath(el); renderCode(el); renderMermaid();
   bindBoxOps(); bindLinks();
   // 跟随：贴底；用户已操作：恢复原滚动位置，绝不抢
+  window.__progScroll = true;
   if (window.__followMode) {
-    window.__progScroll = true;
     window.scrollTo(0, document.body.scrollHeight);
-    requestAnimationFrame(function(){
-      setTimeout(function(){ window.__progScroll = false; notifyBottom(); }, 20);
-    });
   } else {
     window.scrollTo(0, prevTop);
   }
-  notifyBottom();
+  requestAnimationFrame(function(){
+    setTimeout(function(){
+      window.__progScroll = false;
+      notifyBottom();
+    }, 30);
+  });
 }
 function bindLinks(){
   var links = document.querySelectorAll('a[data-u]');
@@ -997,12 +999,7 @@ function bindLinks(){
     };
   }
 }
-function notifyBottom(){
-  var near = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 40);
-  try { Android.onScroll(near); } catch(e) {}
-}
-
-/* 跟随：仅用户手势（touch/wheel）打断；程序滚动不打断 */
+/* 跟随状态机（唯一实现）
 /* 状态机（严格按需求）：
    [*] --> Following: 用户提问
    Following --流式--> Following: 自动滚到底
@@ -1019,6 +1016,11 @@ function atBottom(){
 }
 function notifyBottom(){
   var near = atBottom();
+  // 程序滚动（我们自己的 scrollTo / DOM 更新）不算用户操作；
+  // 其它任何滚动一旦离开底部 → 取消跟随（含惯性、拖动）
+  if (!window.__progScroll && !near) {
+    window.__followMode = false;
+  }
   try { Android.onScroll(near && window.__followMode); } catch(e) {}
 }
 // 用户滑动检测：只认 touchmove/wheel 的真实位移，且方向是离开底部
@@ -1066,19 +1068,22 @@ window.__update = function(msgs, streaming){
   var streamNode = document.getElementById('msg-stream');
   if (streamNode && streaming && streaming.active && msgs.length === window.__lastMsgCount){
     var prevTop = window.scrollY;
+    window.__progScroll = true;   // DOM 更新期间的 scroll 不算用户操作
     streamNode.outerHTML = streamHtml(streaming);
     var list = document.getElementById('list');
     renderMath(list); renderCode(list);
     bindBoxOps(); bindLinks();
     if (window.__followMode) {
-      window.__progScroll = true;
       window.scrollTo(0, document.body.scrollHeight);
-      requestAnimationFrame(function(){
-        setTimeout(function(){ window.__progScroll = false; notifyBottom(); }, 20);
-      });
+    } else {
+      window.scrollTo(0, prevTop);
     }
-    // NotFollowing：完全不动滚动位置
-    notifyBottom();
+    requestAnimationFrame(function(){
+      setTimeout(function(){
+        window.__progScroll = false;
+        notifyBottom();
+      }, 30);
+    });
     return;
   }
   window.__lastMsgCount = msgs.length;
