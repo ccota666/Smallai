@@ -3,6 +3,7 @@ package com.mimochat.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -83,10 +84,22 @@ class MainActivity : ComponentActivity() {
                         val convId = entry.arguments?.getLong("conversationId") ?: -1L
                         val msgId = entry.arguments?.getLong("messageId") ?: -1L
                         lastChatId = convId
+                        // 系统返回 / 返回键 → 回对话列表，不退出 App
+                        androidx.activity.compose.BackHandler {
+                            nav.navigate("conversations") {
+                                popUpTo("conversations") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
                         ChatScreen(
                             conversationId = convId,
                             targetMessageId = msgId,
-                            onBack = { nav.navigate("conversations") }
+                            onBack = {
+                                nav.navigate("conversations") {
+                                    popUpTo("conversations") { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
                         )
                     }
                     composable("settings") {

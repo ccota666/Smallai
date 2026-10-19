@@ -742,7 +742,7 @@ function blockMd(src){
         out += mbox.outerHTML;
       } else {
         var lineN = code.length;
-        var clamped = lineN > 6;
+        var clamped = lineN > 6 && !window.__noFold;
         var cbox = document.createElement('div');
         cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
@@ -951,6 +951,7 @@ function msgHtml(m){
 }
 function streamHtml(s){
   if (!s || !s.active) return '';
+  window.__noFold = true;
   var h = '<div class="msg ai" id="msg-stream"><div class="bubble">';
   if (s.reasoning && String(s.reasoning).length){
     h += '<details class="reason" open><summary>思考中 · '
