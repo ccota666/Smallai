@@ -162,7 +162,12 @@ private suspend fun LazyListState.scrollChatToBottom(animate: Boolean = false) {
 }
 
 @Composable
-fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> Unit) {
+fun ChatScreen(
+    conversationId: Long,
+    targetMessageId: Long = -1L,
+    onBack: () -> Unit,
+    onOpenList: () -> Unit = {}
+) {
     val app = LocalContext.current.applicationContext as MiMoApplication
     val vm: ChatViewModel = viewModel(factory = viewModelFactory {
         initializer { ChatViewModel(app.chatRepository, app.settingsRepository) }
@@ -350,7 +355,7 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
                 deepThinking = settings.deepThinking,
                 temperature = settings.temperature,
                 questions = messages.filter { it.role == "user" && it.content.isNotBlank() },
-                onOpenList = onBack,
+                onOpenList = onOpenList,
                 onSelectModel = { vm.setModel(it) },
                 onSetWebSearch = { vm.setWebSearch(it) },
                 onSetDeepThinking = { vm.setDeepThinking(it) },
@@ -433,7 +438,7 @@ fun ChatScreen(conversationId: Long, targetMessageId: Long = -1L, onBack: () -> 
                         },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(end = 14.dp, bottom = 96.dp)
+                            .padding(end = 14.dp, bottom = 130.dp)
                     )
                 }
                 } // Box inner

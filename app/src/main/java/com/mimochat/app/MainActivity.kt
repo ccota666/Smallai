@@ -84,11 +84,16 @@ class MainActivity : ComponentActivity() {
                         val convId = entry.arguments?.getLong("conversationId") ?: -1L
                         val msgId = entry.arguments?.getLong("messageId") ?: -1L
                         lastChatId = convId
-                        // 返回 = 退出 App（与主流 AI 应用一致）；进列表用左上角菜单
+                        // 系统返回 = 退出 App；左上角菜单 = 进对话列表
                         ChatScreen(
                             conversationId = convId,
                             targetMessageId = msgId,
-                            onBack = { nav.popBackStack() }
+                            onBack = { nav.popBackStack() },
+                            onOpenList = {
+                                nav.navigate("conversations") {
+                                    launchSingleTop = true
+                                }
+                            }
                         )
                     }
                     composable("settings") {
