@@ -348,56 +348,31 @@ private fun ConversationItem(
                 Spacer(Modifier.width(8.dp))
             }
             Column(Modifier.weight(1f)) {
-                // 大字=标题（重命名后就是名称，否则等于首问）；小字=补充信息
+                // 两行各占满宽：大字=标题/首问，小字=补充；行末统一打点
                 val question = previewQuestion(conv.id) ?: ""
                 val answer = previewAnswer(conv.id).orEmpty()
                 val title = conv.title
                 val renamed = question.isNotBlank() && title.isNotBlank() && title != question
                 val big = if (renamed) title else (if (question.isNotBlank()) question else title)
                 val small = if (renamed) question else answer
-                val maxBig = 18
-                if (big.length <= maxBig) {
+                Text(
+                    big,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (small.isNotBlank()) {
                     Text(
-                        big,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (small.isNotBlank()) {
-                        Text(
-                            small,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = 12.dp)
-                        )
-                    }
-                } else {
-                    var cut = maxBig
-                    for (k in maxBig downTo 2) {
-                        val c = big[k]
-                        if (c == ' ' || c == '，' || c == '、' || c == '。' ||
-                            c == ',' || c == '.' || c == '—' || c == '-'
-                        ) { cut = k; break }
-                    }
-                    Text(
-                        big.take(cut),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        big.drop(cut).trimStart().ifBlank { small },
+                        small,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp)
                     )
                 }
             }

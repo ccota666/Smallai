@@ -726,8 +726,9 @@ function blockMd(src){
       var info = trim(line).slice(3).replace(/^\s+/, '').replace(/\s+$/, '');
       i++;
       var code = [];
+      var closed = false;
       while (i < lines.length && !isFence(lines[i])){ code.push(lines[i]); i++; }
-      i++;
+      if (i < lines.length && isFence(lines[i])) { closed = true; i++; }
       var body = code.join('\n');
       var lang = info || 'code';
       if (info === 'mermaid'){
@@ -742,7 +743,7 @@ function blockMd(src){
         out += mbox.outerHTML;
       } else {
         var lineN = code.length;
-        var clamped = lineN > 6 && !window.__noFold;
+        var clamped = closed && lineN > 6;  // 生成完一段折叠一段
         var cbox = document.createElement('div');
         cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
