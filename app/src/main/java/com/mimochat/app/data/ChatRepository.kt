@@ -21,6 +21,20 @@ class ChatRepository(
 
     fun cancelGeneration() = api.cancel()
 
+    /** 打开会话时把残留 pending 落盘，避免一直「正在思考」 */
+    suspend fun clearStalePending(convId: Long) {
+        val pendings = db.messageDao().getByConversation(convId).filter { it.pending }
+        for (m in pendings) {
+            db.messageDao().update(
+                m.copy(
+                    pending = false,
+                    content = m.content.ifBlank { "(已中断)" },
+                    reasoning = m.reasoning
+                )
+            )
+        }
+    }
+
     fun observeFirstUserMessages() = db.messageDao().observeFirstUserMessages()
     fun observeFirstAssistantMessages() = db.messageDao().observeFirstAssistantMessages()
 

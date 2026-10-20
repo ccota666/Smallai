@@ -96,6 +96,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -228,6 +229,8 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    var inputAreaHeight by remember { mutableIntStateOf(0) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
     val voiceRecorder = remember { com.mimochat.app.ui.VoiceRecorder(context) }
     var voiceRecording by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
@@ -438,7 +441,7 @@ fun ChatScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(end = 14.dp, bottom = 130.dp)
+                            .padding(end = 14.dp, bottom = inputAreaHeight.dp + 12.dp)
                     )
                 }
                 } // Box inner
@@ -450,6 +453,7 @@ fun ChatScreen(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    .onSizeChanged { inputAreaHeight = (it.height / density.density).toInt() }
             ) {
                 Column(
                     Modifier

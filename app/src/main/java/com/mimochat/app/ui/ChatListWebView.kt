@@ -525,6 +525,9 @@ function headHtml(label, copyText, fsHtml, fsTitle){
     + '<button data-act="fs" data-title="' + esc(fsTitle || label) + '">全屏</button>'
     + '</div></div>';
 }
+var expandedCodeKeys = {};
+function codeKey(b){ return (b || '').slice(0, 48); }
+
 function bindBoxOps(){
   var heads = document.querySelectorAll('.box .bhead');
   for (var i = 0; i < heads.length; i++){
@@ -533,18 +536,21 @@ function bindBoxOps(){
       var body = box.lastChild;
       var copyBtn = head.querySelector('button[data-act=copy]');
       var fsBtn = head.querySelector('button[data-act=fs]');
-      // 展开按钮在代码框右下角
+      // 展开按钮在右下角；点击状态记入 expandedCodeKeys，重绘后仍展开
       var bodyEl = box.querySelector('.codebody');
       if (bodyEl && bodyEl.classList.contains('clamped')){
         var exp = document.createElement('button');
         exp.className = 'expand-btn';
         exp.textContent = ' 展开';
+        var raw = bodyEl.textContent || '';
         exp.onclick = function(e){
           e.stopPropagation();
           var on = bodyEl.classList.toggle('clamped');
           var fade = bodyEl.querySelector('.fade');
           if (fade) fade.style.display = on ? '' : 'none';
           exp.textContent = on ? ' 展开' : '收起';
+          if (!on) expandedCodeKeys[codeKey(raw)] = 1;
+          else delete expandedCodeKeys[codeKey(raw)];
         };
         box.appendChild(exp);
       }
@@ -743,7 +749,7 @@ function blockMd(src){
         out += mbox.outerHTML;
       } else {
         var lineN = code.length;
-        var clamped = closed && lineN > 6;  // 生成完一段折叠一段
+        var clamped = closed && lineN > 6 && !expandedCodeKeys[codeKey(body)];
         var cbox = document.createElement('div');
         cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
@@ -955,7 +961,10 @@ function streamHtml(s){
   window.__noFold = true;
   var h = '<div class="msg ai" id="msg-stream"><div class="bubble">';
   if (s.reasoning && String(s.reasoning).length){
-    h += '<details class="reason" open><summary>思考中 · '
+    // 思考还在进行 = 没有正文；一旦出正文就折叠
+    var stillThinking = !s.content || !String(s.content).length;
+    h += '<details class="reason"' + (stillThinking ? ' open' : '') + '><summary>'
+      + (stillThinking ? '思考中' : '思考过程') + ' · '
       + Number(s.seconds || 0).toFixed(1) + 's</summary><pre>'
       + esc(s.reasoning) + '</pre></details>';
   }

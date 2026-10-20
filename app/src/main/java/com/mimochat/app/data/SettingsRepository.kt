@@ -17,7 +17,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 data class AppSettings(
     val apiKey: String = "",
     val baseUrl: String = "https://api.xiaomimimo.com/v1",
-    val models: String = "mimo-v2.6-flash,**mimo-v2.6-ultraspeed**,mimo-v2.6-pro",
+    val models: String = "mimo-v2.6-flash,**mimo-v2.6-pro-ultraspeed**,mimo-v2.6-pro",
     val model: String = "mimo-v2.6-flash",
     val themeMode: Int = 2, // 0 = light, 1 = dark, 2 = system
     val fontSize: Float = 16f,
@@ -54,7 +54,7 @@ class SettingsRepository(private val context: Context) {
         AppSettings(
             apiKey = p[Keys.API_KEY] ?: "",
             baseUrl = p[Keys.BASE_URL] ?: "https://api.xiaomimimo.com/v1",
-            models = p[Keys.MODELS] ?: "mimo-v2.6-flash,**mimo-v2.6-ultraspeed**,mimo-v2.6-pro",
+            models = p[Keys.MODELS] ?: "mimo-v2.6-flash,**mimo-v2.6-pro-ultraspeed**,mimo-v2.6-pro",
             model = p[Keys.MODEL] ?: "mimo-v2.6-flash",
             themeMode = p[Keys.THEME_MODE] ?: 2,
             fontSize = p[Keys.FONT_SIZE] ?: 16f,

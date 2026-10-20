@@ -61,6 +61,7 @@ class ChatViewModel(
     private var lastPublishAt = 0L
 
     fun init(convId: Long) {
+        viewModelScope.launch { runCatching { repo.clearStalePending(convId) } }
         if (conversationId == convId) return
         conversationId = convId
         viewModelScope.launch {
