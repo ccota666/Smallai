@@ -1143,22 +1143,45 @@ window.__update = function(msgs, streaming){
     window.__progUntil = Date.now() + 80;
     var prevTop = window.scrollY;
 
+    var bubble = streamNode.querySelector('.bubble');
     var details = streamNode.querySelector('details.reason');
-    var pre = details ? details.querySelector('pre') : null;
-    var sum = details ? details.querySelector('summary') : null;
-    if (details && pre){
-      if (String(streaming.reasoning || '').length){
-        pre.textContent = streaming.reasoning;
-        // 出正文后收起（若用户手动展开则保持）
-        if (!details.dataset.userToggled){
-          var thinking = !streaming.content || !String(streaming.content).length;
-          if (thinking) details.setAttribute('open',''); else details.removeAttribute('open');
-        }
-        if (sum){
-          sum.textContent = (streaming.content && String(streaming.content).length ? '思考过程' : '思考中')
-            + ' · ' + Number(streaming.seconds || 0).toFixed(1) + 's';
-        }
-        details.style.display = '';
+    // 有思考内容但节点还没建 → 补上（否则会一直空白，直到结束整页重绘）
+    if (!details && streaming.reasoning && String(streaming.reasoning).length && bubble){
+      details = document.createElement('details');
+      details.className = 'reason';
+      var sm = document.createElement('summary');
+      var pr = document.createElement('pre');
+      details.appendChild(sm);
+      details.appendChild(pr);
+      bubble.insertBefore(details, bubble.firstChild);
+    }
+    if (details){
+      var pre = details.querySelector('pre');
+      var sum = details.querySelector('summary');
+      var hasR = streaming.reasoning && String(streaming.reasoning).length;
+      var hasC = streaming.content && String(streaming.content).length;
+      if (hasR) pre.textContent = streaming.reasoning;
+      else details.style.display = 'none';
+      if (!details.dataset.userToggled){
+        if (hasR && !hasC) details.setAttribute('open','');
+        else if (hasR && hasC) details.removeAttribute('open');  // 思考完自动折叠
+      }
+      if (sum){
+        sum.textContent = (hasC ? '思考过程' : '思考中') + ' · '
+          + Number(streaming.seconds || 0).toFixed(1) + 's';
+      }
+    }
+
+    // 只保留一个「正在思考」：有正文就删 pending
+    if (bubble){
+      if (streaming.content && String(streaming.content).length){
+        var pes = bubble.querySelectorAll('.pending');
+        for (var k=0;k<pes.length;k++) pes[k].remove();
+      } else if (!bubble.querySelector('.pending')){
+        var pe = document.createElement('div');
+        pe.className = 'pending';
+        pe.textContent = '正在思考…';
+        bubble.appendChild(pe);
       }
     }
 
@@ -1175,14 +1198,6 @@ window.__update = function(msgs, streaming){
       // 只替换 content 内部
       contentEl.innerHTML = html;
       renderMath(contentEl); renderCode(contentEl); bindBoxOps(); bindLinks();
-    } else if (!contentEl){
-      if (!streamNode.querySelector('.pending')){
-        var bubble = streamNode.querySelector('.bubble');
-        var pe = document.createElement('div');
-        pe.className = 'pending';
-        pe.textContent = '正在思考…';
-        bubble.appendChild(pe);
-      }
     }
 
     if (window.__followMode) {
