@@ -23,4 +23,6 @@ class SettingsViewModel(private val repo: SettingsRepository) : ViewModel() {
     fun setContextLimit(v: Int) = viewModelScope.launch { repo.setContextLimit(v) }
     fun setSystemPrompt(v: String) = viewModelScope.launch { repo.setSystemPrompt(v) }
     fun setBoldColor(v: Int) = viewModelScope.launch { repo.setBoldColor(v) }
+    fun setCompressOverflow(v: Boolean) = viewModelScope.launch { repo.setCompressOverflow(v) }
+    fun setCompressPrompt(v: String) = viewModelScope.launch { repo.setCompressPrompt(v) }
 }

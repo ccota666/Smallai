@@ -158,6 +158,38 @@ class MiMoApi {
         }
     }
 
+    /** 非流式单轮调用（压缩/摘要用），返回 choices[0].message.content */
+    suspend fun completeOnce(
+        settings: AppSettings,
+        systemText: String,
+        userText: String
+    ): String = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+        body.put("model", settings.model)
+        body.put("stream", false)
+        body.put("max_completion_tokens", 4096)
+        body.put("thinking", JSONObject().put("type", "disabled"))
+        val arr = JSONArray()
+        arr.put(JSONObject().put("role", "system").put("content", systemText))
+        arr.put(JSONObject().put("role", "user").put("content", userText))
+        body.put("messages", arr)
+        val url = settings.baseUrl.trimEnd('/') + "/chat/completions"
+        val req = Request.Builder()
+            .url(url)
+            .addHeader("api-key", settings.apiKey)
+            .addHeader("Authorization", "Bearer " + settings.apiKey)
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string() ?: ""
+            if (!resp.isSuccessful) throw MiMoApiException("HTTP ${resp.code} ${extractError(raw)}")
+            JSONObject(raw)
+                .optJSONArray("choices")?.optJSONObject(0)
+                ?.optJSONObject("message")?.optString("content")
+                ?: ""
+        }
+    }
+
     private fun buildRequest(settings: AppSettings, messages: List<ApiMessage>): Request {
         val body = JSONObject()
         body.put("model", settings.model)

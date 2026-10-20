@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,8 +49,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.initializer
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.mimochat.app.MiMoApplication
 import com.mimochat.app.data.AppSettings
@@ -64,6 +69,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         return
     }
     val app = LocalContext.current.applicationContext as MiMoApplication
+    val scope = rememberCoroutineScope()
     val vm: SettingsViewModel = viewModel(factory = viewModelFactory {
         initializer { SettingsViewModel(app.settingsRepository) }
     })
@@ -154,6 +160,31 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SectionTitle("上下文")
             ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
+
+            SectionTitle("上下文压缩")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("超出历史条数时压缩上文", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = settings.compressOverflow,
+                    onCheckedChange = { scope.launch { vm.setCompressOverflow(it) } }
+                )
+            }
+            Text(
+                "在你下一次提问之前把更早的对话压成「前情提要」。对话越长等待越久。",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            var compressPrompt by remember(settings.compressPrompt) { mutableStateOf(settings.compressPrompt) }
+            OutlinedTextField(
+                value = compressPrompt,
+                onValueChange = {
+                    compressPrompt = it
+                    vm.setCompressPrompt(it)
+                },
+                label = { Text("压缩提示词") },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             SectionTitle("高级")
             OutlinedTextField(

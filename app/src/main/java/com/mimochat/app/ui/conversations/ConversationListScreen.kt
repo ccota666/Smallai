@@ -78,8 +78,7 @@ fun ConversationListScreen(
         initializer { ConversationListViewModel(app.chatRepository, app.settingsRepository) }
     })
     val conversations by vm.conversations.collectAsState(initial = emptyList())
-    val firstUser by vm.firstUser.collectAsState(initial = emptyList())
-    val firstAssistant by vm.firstAssistant.collectAsState(initial = emptyList())
+    val previews by vm.previews.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     // 对话列表：系统返回 = 回到最近打开的对话，而不是退出 App
     BackHandler { onBackToChat() }
@@ -210,11 +209,11 @@ fun ConversationListScreen(
                     }
                 }
             } else {
-                val firstUserMap = remember(firstUser) {
-                    firstUser.associate { it.conversationId to it.content.trim() }
+                val firstUserMap = remember(previews) {
+                    previews.filter { it.role == "user" }.associate { it.conversationId to it.content.trim() }
                 }
-                val firstAiMap = remember(firstAssistant) {
-                    firstAssistant.associate { it.conversationId to it.content.trim() }
+                val firstAiMap = remember(previews) {
+                    previews.filter { it.role == "assistant" }.associate { it.conversationId to it.content.trim() }
                 }
                 LazyColumn(Modifier.weight(1f)) {
                     items(conversations, key = { it.id }) { conv ->

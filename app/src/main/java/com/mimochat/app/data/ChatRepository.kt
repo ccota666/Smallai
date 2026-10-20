@@ -36,6 +36,7 @@ class ChatRepository(
     }
 
     fun observeFirstUserMessages() = db.messageDao().observeFirstUserMessages()
+    fun observePreviews() = db.messageDao().observePreviews()
     fun observeFirstAssistantMessages() = db.messageDao().observeFirstAssistantMessages()
 
     suspend fun searchMessages(query: String): List<ChatMessage> =
@@ -83,7 +84,8 @@ class ChatRepository(
         val placeholderId = db.messageDao().insert(
             ChatMessage(conversationId = convId, role = "assistant", content = "", attachmentsJson = "", createdAt = now + 1, pending = true)
         )
-        val settings = settingsRepo.settings.first().copy(model = model)
+        val settings = settingsRepo.settings.first().copy(model = model,
+            systemPrompt = lastCompressedSystem.ifBlank { settingsRepo.settings.first().systemPrompt })
         val history = buildHistory(convId, placeholderId)
         val requestStart = System.currentTimeMillis()
         var firstContentAt = 0L
@@ -154,7 +156,8 @@ class ChatRepository(
         val placeholderId = db.messageDao().insert(
             ChatMessage(conversationId = convId, role = "assistant", content = "", attachmentsJson = "", createdAt = now, pending = true)
         )
-        val settings = settingsRepo.settings.first().copy(model = model)
+        val settings = settingsRepo.settings.first().copy(model = model,
+            systemPrompt = lastCompressedSystem.ifBlank { settingsRepo.settings.first().systemPrompt })
         val history = buildHistory(convId, placeholderId)
         val requestStart = System.currentTimeMillis()
         var firstContentAt = 0L
@@ -239,36 +242,56 @@ class ChatRepository(
         }
     }
 
-    private suspend fun buildHistory(convId: Long, excludeId: Long): List<ApiMessage> {
-        val settings = settingsRepo.settings.first()
-        val all = db.messageDao().getByConversation(convId)
-            .filter { it.id != excludeId && it.role != "system" }
-        val limit = settings.contextLimit.coerceIn(2, 500)
-        val trimmed = all.takeLast(limit)
-        val lastUserMessageId = trimmed.lastOrNull { it.role == "user" }?.id
-        return trimmed.mapNotNull { msg ->
+    private fun toApiMessages(list: List<ChatMessage>): List<ApiMessage> {
+        return list.map { m ->
             val parts = mutableListOf<ChatPart>()
-            if (msg.content.isNotBlank()) parts.add(ChatPart.Text(msg.content))
-            for (a in parseAttachments(msg.attachmentsJson)) {
-                when (a.type) {
-                    "image" -> {
-                        if (msg.id == lastUserMessageId) {
-                            a.path?.let { p ->
-                                base64Image(p)?.let { parts.add(ChatPart.ImageUrl(it)) }
-                            }
-                        } else {
-                            parts.add(ChatPart.Text(IMAGE_HINT))
-                        }
-                    }
-                    "text" -> a.content?.let { c ->
-                        parts.add(ChatPart.Text("\n\n【附件 ${a.name ?: "文件"}】\n$c"))
+            if (m.content.isNotBlank()) parts.add(ChatPart.Text(m.content))
+            for (a in parseAttachments(m.attachmentsJson)) {
+                if (a.type == "image" && a.path != null) {
+                    val f = java.io.File(a.path)
+                    if (f.exists()) {
+                        val b64 = android.util.Base64.encodeToString(f.readBytes(), android.util.Base64.NO_WRAP)
+                        parts.add(ChatPart.ImageUrl("data:image/jpeg;base64,$b64"))
                     }
                 }
             }
-            if (parts.isEmpty()) parts.add(ChatPart.Text(""))
-            ApiMessage(msg.role, parts)
+            ApiMessage(m.role, parts)
         }
     }
+
+    private suspend fun buildHistory(convId: Long, excludeId: Long): List<ApiMessage> {
+        val settings = settingsRepo.settings.first()
+        val all = db.messageDao().getByConversation(convId)
+            .filter { it.id != excludeId && !it.pending && it.content.isNotBlank() }
+        val limit = settings.contextLimit.coerceAtLeast(4)
+        if (!settings.compressOverflow || all.size <= limit) {
+            // 不压缩：直接截最近 limit 条
+            return toApiMessages(all.takeLast(limit))
+        }
+        // 超出 limit → 用户本次提问前，先把「上文」压缩成摘要
+        val older = all.dropLast(limit)
+        val recent = all.takeLast(limit)
+        val summary = runCatching {
+            api.completeOnce(
+                settings,
+                settings.compressPrompt,
+                older.joinToString("\n") {
+                    (if (it.role == "user") "用户：" else "助手：") + it.content
+                }
+            )
+        }.getOrDefault("")
+        val sys = settings.systemPrompt + (
+            if (summary.isBlank()) "" else "\n\n【前情提要】\n$summary"
+        )
+        // 摘要走 system，最近消息原样
+        val list = toApiMessages(recent).toMutableList()
+        // buildRequest 会再加 system，这里用 messages 前插一条 system 可绕过
+        // 简化：把摘要拼进第一条 user 前的 system —— 直接改 settings 传递
+        lastCompressedSystem = sys
+        return list
+    }
+
+    @Volatile private var lastCompressedSystem: String = ""
 
     private fun base64Image(path: String): String? = runCatching {
         val file = File(path)

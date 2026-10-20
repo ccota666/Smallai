@@ -7,6 +7,7 @@ import com.mimochat.app.data.ChatRepository
 import com.mimochat.app.data.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,12 +26,9 @@ class ConversationListViewModel(
     val conversations = repo.observeConversations()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** 会话id -> 首条用户问题（两行预览第一行） */
-    val firstUser = repo.observeFirstUserMessages()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    /** 会话id -> 首条 AI 回答（问题只有一行时用） */
-    val firstAssistant = repo.observeFirstAssistantMessages()
+    /** 预览消息（首问+首答），合并查询 + 去重，避免每次发消息全列表重绘 */
+    val previews = repo.observePreviews()
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val settings: StateFlow<AppSettings> = settingsRepo.settings

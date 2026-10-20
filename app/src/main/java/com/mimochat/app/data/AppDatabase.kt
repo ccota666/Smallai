@@ -98,6 +98,18 @@ interface MessageDao {
         """
     )
     fun observeFirstAssistantMessages(): Flow<List<ChatMessage>>
+
+    /** 首问+首答一次查出（列表两行预览用，减少一次全表刷新） */
+    @Query(
+        """
+        SELECT * FROM messages WHERE id IN (
+          SELECT MIN(id) FROM messages WHERE role='user' GROUP BY conversationId
+          UNION
+          SELECT MIN(id) FROM messages WHERE role='assistant' GROUP BY conversationId
+        )
+        """
+    )
+    fun observePreviews(): Flow<List<ChatMessage>>
 }
 
 @Database(

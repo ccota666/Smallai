@@ -14,6 +14,14 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+object PromptDefaults {
+    const val SYSTEM = "你是MiMo，小米公司研发的AI智能助手。请优先使用简体中文回答。"
+    const val COMPRESS = """请把下面这段历史对话压缩为「前情提要」，不超过 300 字。
+保留：具体事实、数字、结论、用户偏好、未解决的问题。
+丢弃：寒暄、重复表述、助手的思考过程。
+用第三人称客观陈述，不要输出任何解释。"""
+}
+
 data class AppSettings(
     val apiKey: String = "",
     val baseUrl: String = "https://api.xiaomimimo.com/v1",
@@ -22,14 +30,19 @@ data class AppSettings(
     val themeMode: Int = 2, // 0 = light, 1 = dark, 2 = system
     val fontSize: Float = 16f,
     val contextLimit: Int = 40,
-    val systemPrompt: String = "",
+    val systemPrompt: String = PromptDefaults.SYSTEM,
     val webSearch: Boolean = false,
     val deepThinking: Boolean = true,
     /** API 范围 [0, 1.5]；深度思考开启时服务端会强制 1.0 */
     val temperature: Float = 1.0f,
     /** 加粗/关键词颜色 ARGB，0 表示跟随主题 */
     val boldColor: Int = 0,
-    val maxTokens: Int = 131072
+    val maxTokens: Int = 131072,
+    /** 超出 contextLimit 的历史，是否在下次提问前压缩为摘要 */
+    val compressOverflow: Boolean = false,
+    /** 压缩提示词（可自定义） */
+    val compressPrompt: String = PromptDefaults.COMPRESS,
+    val systemPromptDefault: String = PromptDefaults.SYSTEM
 )
 
 class SettingsRepository(private val context: Context) {
@@ -48,6 +61,8 @@ class SettingsRepository(private val context: Context) {
         val TEMPERATURE = floatPreferencesKey("temperature")
         val MAX_TOKENS = intPreferencesKey("max_tokens")
         val BOLD_COLOR = intPreferencesKey("bold_color")
+        val COMPRESS_OVERFLOW = booleanPreferencesKey("compress_overflow")
+        val COMPRESS_PROMPT = stringPreferencesKey("compress_prompt")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
@@ -59,12 +74,14 @@ class SettingsRepository(private val context: Context) {
             themeMode = p[Keys.THEME_MODE] ?: 2,
             fontSize = p[Keys.FONT_SIZE] ?: 16f,
             contextLimit = p[Keys.CONTEXT_LIMIT] ?: 40,
-            systemPrompt = p[Keys.SYSTEM_PROMPT] ?: "",
+            systemPrompt = p[Keys.SYSTEM_PROMPT] ?: PromptDefaults.SYSTEM,
             webSearch = p[Keys.WEB_SEARCH] ?: false,
             deepThinking = p[Keys.DEEP_THINKING] ?: true,
             temperature = (p[Keys.TEMPERATURE] ?: 1.0f).coerceIn(0f, 1.5f),
             boldColor = p[Keys.BOLD_COLOR] ?: 0,
-            maxTokens = 131072
+            maxTokens = 131072,
+            compressOverflow = p[Keys.COMPRESS_OVERFLOW] ?: false,
+            compressPrompt = p[Keys.COMPRESS_PROMPT] ?: PromptDefaults.COMPRESS
         )
     }
 
@@ -82,6 +99,10 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.TEMPERATURE] = v.coerceIn(0f, 1.5f) }
 
     suspend fun setBoldColor(v: Int) = context.dataStore.edit { it[Keys.BOLD_COLOR] = v }
+    suspend fun setCompressOverflow(v: Boolean) =
+        context.dataStore.edit { it[Keys.COMPRESS_OVERFLOW] = v }
+    suspend fun setCompressPrompt(v: String) =
+        context.dataStore.edit { it[Keys.COMPRESS_PROMPT] = v }
 }
 
 /** 模型列表解析：**name** 表示高价模型（显示红色），name 为普通 */
