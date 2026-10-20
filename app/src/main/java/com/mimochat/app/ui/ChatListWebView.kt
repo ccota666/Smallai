@@ -995,7 +995,7 @@ function streamHtml(s){
   }
   if (s.content && String(s.content).length)
     h += '<div class="content">' + blockMd(s.content) + '</div>';
-  else
+  else if (!s.reasoning || !String(s.reasoning).length)
     h += '<div class="pending">正在思考…</div>';
   return h + '</div></div>';
 }
@@ -1172,12 +1172,14 @@ window.__update = function(msgs, streaming){
       }
     }
 
-    // 只保留一个「正在思考」：有正文就删 pending
+    // 「正在思考…」只在「既无思考框、又无正文」时出现；
+    // 有思考框或有输出 → 一律删掉，避免上下都挂着一行
     if (bubble){
-      if (streaming.content && String(streaming.content).length){
-        var pes = bubble.querySelectorAll('.pending');
-        for (var k=0;k<pes.length;k++) pes[k].remove();
-      } else if (!bubble.querySelector('.pending')){
+      var hasR2 = streaming.reasoning && String(streaming.reasoning).length;
+      var hasC2 = streaming.content && String(streaming.content).length;
+      var pes = bubble.querySelectorAll('.pending');
+      for (var k=0;k<pes.length;k++) pes[k].remove();
+      if (!hasR2 && !hasC2){
         var pe = document.createElement('div');
         pe.className = 'pending';
         pe.textContent = '正在思考…';
