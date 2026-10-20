@@ -84,11 +84,15 @@ class MainActivity : ComponentActivity() {
                         val convId = entry.arguments?.getLong("conversationId") ?: -1L
                         val msgId = entry.arguments?.getLong("messageId") ?: -1L
                         lastChatId = convId
-                        // 系统返回 = 退出 App；左上角菜单 = 进对话列表
+                        // 任意聊天页：系统返回 = 直接退出 App（不走返回栈）
+                        val act = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+                        androidx.activity.compose.BackHandler(enabled = true) {
+                            act?.finishAffinity()
+                        }
                         ChatScreen(
                             conversationId = convId,
                             targetMessageId = msgId,
-                            onBack = { nav.popBackStack() },
+                            onBack = { act?.finishAffinity() },
                             onOpenList = {
                                 nav.navigate("conversations") {
                                     launchSingleTop = true

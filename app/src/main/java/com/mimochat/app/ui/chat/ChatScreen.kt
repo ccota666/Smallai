@@ -1314,7 +1314,7 @@ private fun buildMessagesJson(
             .put("content", if (isStreamingMsg) streaming else m.content)
             .put("reasoning", if (isStreamingMsg) reasoning else m.reasoning)
             .put("thinkingMs", if (isStreamingMsg) 0 else m.thinkingMs)
-            .put("pending", m.pending && !isStreamingMsg)
+            .put("pending", m.pending && isStreamingMsg)  // 非正在生成的一律不显示「正在思考」
             .put("failed", m.failed)
             .put("thinking", false)
         val atts = JSONArray()

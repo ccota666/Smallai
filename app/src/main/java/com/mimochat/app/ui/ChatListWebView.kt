@@ -56,10 +56,20 @@ fun ChatListWebView(
     }
 
     var lastFollowTrigger by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+
+    // WebView 复用：缓存在 appContext 上，进出对话不重建（避免闪烁/重复初始化）
+    val cacheKey = "chat_webview"
+    val cache = remember {
+        val app = context.applicationContext
+        (app as? android.app.Application)
+            ?.let { WebViewCache.get(it, cacheKey) }
+    }
+
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            WebView(ctx).apply {
+            val cached = cache?.takeIf { it.parent == null }
+            (cached ?: WebView(ctx)).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.allowFileAccess = true
@@ -145,6 +155,10 @@ fun ChatListWebView(
                     "file:///android_asset/", html, "text/html", "utf-8", null
                 )
             }
+        },
+        onRelease = { wv ->
+            // 父容器拆下，WebView 本体留给缓存复用
+            (wv.parent as? android.view.ViewGroup)?.removeView(wv)
         },
         update = { wv ->
             wv.evaluateJavascript(
@@ -528,6 +542,15 @@ function headHtml(label, copyText, fsHtml, fsTitle){
 var expandedCodeKeys = {};
 function codeKey(b){ return (b || '').slice(0, 48); }
 
+// 记住用户手动折叠/展开思考
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if (t && t.closest && t.closest('details.reason')){
+    var d = t.closest('details.reason');
+    if (t.tagName === 'SUMMARY') d.dataset.userToggled = '1';
+  }
+}, true);
+
 function bindBoxOps(){
   var heads = document.querySelectorAll('.box .bhead');
   for (var i = 0; i < heads.length; i++){
@@ -538,7 +561,7 @@ function bindBoxOps(){
       var fsBtn = head.querySelector('button[data-act=fs]');
       // 展开按钮在右下角；点击状态记入 expandedCodeKeys，重绘后仍展开
       var bodyEl = box.querySelector('.codebody');
-      if (bodyEl && bodyEl.classList.contains('clamped')){
+      if (bodyEl && (bodyEl.classList.contains('clamped') || bodyEl.dataset.foldable === '1')){
         var exp = document.createElement('button');
         exp.className = 'expand-btn';
         exp.textContent = ' 展开';
@@ -749,7 +772,8 @@ function blockMd(src){
         out += mbox.outerHTML;
       } else {
         var lineN = code.length;
-        var clamped = closed && lineN > 6 && !expandedCodeKeys[codeKey(body)];
+        var showFoldBtn = lineN > 6;
+        var clamped = showFoldBtn && closed && !expandedCodeKeys[codeKey(body)];
         var cbox = document.createElement('div');
         cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
@@ -757,6 +781,7 @@ function blockMd(src){
           lang + ' 代码');
         var cbody = document.createElement('div');
         cbody.className = 'codebody' + (clamped ? ' clamped' : '');
+        if (showFoldBtn) cbody.setAttribute('data-foldable','1');
         cbody.innerHTML = '<pre><code class="language-' + esc(lang) + '">'
           + esc(body) + '</code></pre>'
           + (clamped ? '<div class="fade"></div>' : '');
@@ -1110,15 +1135,56 @@ window.__lastMsgCount = -1;
 window.__update = function(msgs, streaming){
   if (typeof msgs === 'string') msgs = JSON.parse(msgs);
   if (typeof streaming === 'string') streaming = JSON.parse(streaming);
-  // 流式中且消息条数没变：只替换最后一个 stream 节点，不动历史，不抢滚动
+
   var streamNode = document.getElementById('msg-stream');
+  // 流式增量更新：只改 reasoning / content 两处，不替换整节点
+  // → 思考折叠、代码展开按钮等 DOM 状态都不会丢
   if (streamNode && streaming && streaming.active && msgs.length === window.__lastMsgCount){
+    window.__progUntil = Date.now() + 80;
     var prevTop = window.scrollY;
-    window.__progUntil = Date.now() + 80;   // DOM 更新期间的 scroll 不算用户操作
-    streamNode.outerHTML = streamHtml(streaming);
-    var list = document.getElementById('list');
-    renderMath(list); renderCode(list);
-    bindBoxOps(); bindLinks();
+
+    var details = streamNode.querySelector('details.reason');
+    var pre = details ? details.querySelector('pre') : null;
+    var sum = details ? details.querySelector('summary') : null;
+    if (details && pre){
+      if (String(streaming.reasoning || '').length){
+        pre.textContent = streaming.reasoning;
+        // 出正文后收起（若用户手动展开则保持）
+        if (!details.dataset.userToggled){
+          var thinking = !streaming.content || !String(streaming.content).length;
+          if (thinking) details.setAttribute('open',''); else details.removeAttribute('open');
+        }
+        if (sum){
+          sum.textContent = (streaming.content && String(streaming.content).length ? '思考过程' : '思考中')
+            + ' · ' + Number(streaming.seconds || 0).toFixed(1) + 's';
+        }
+        details.style.display = '';
+      }
+    }
+
+    var contentEl = streamNode.querySelector('.content');
+    if (streaming.content && String(streaming.content).length){
+      var html = blockMd(streaming.content);
+      if (!contentEl){
+        var pend = streamNode.querySelector('.pending');
+        if (pend) pend.remove();
+        contentEl = document.createElement('div');
+        contentEl.className = 'content';
+        streamNode.querySelector('.bubble').appendChild(contentEl);
+      }
+      // 只替换 content 内部
+      contentEl.innerHTML = html;
+      renderMath(contentEl); renderCode(contentEl); bindBoxOps(); bindLinks();
+    } else if (!contentEl){
+      if (!streamNode.querySelector('.pending')){
+        var bubble = streamNode.querySelector('.bubble');
+        var pe = document.createElement('div');
+        pe.className = 'pending';
+        pe.textContent = '正在思考…';
+        bubble.appendChild(pe);
+      }
+    }
+
     if (window.__followMode) {
       window.scrollTo(0, document.body.scrollHeight);
     } else {
@@ -1127,15 +1193,16 @@ window.__update = function(msgs, streaming){
     requestAnimationFrame(function(){
       setTimeout(function(){
         window.__progUntil = 0;
-function isProg(){ return Date.now() < window.__progUntil; }
         notifyBottom();
       }, 30);
     });
     return;
   }
+
   window.__lastMsgCount = msgs.length;
   renderChat(msgs, streaming);
 };
+
 document.body.setAttribute('data-dark', '$darkFlag');
 try {
   var bc = getComputedStyle(document.body).getPropertyValue('--bc').trim();
@@ -1145,4 +1212,16 @@ try {
 </body>
 </html>
 """
+}
+
+/** App 级 WebView 缓存：同一个 key 复用一个 WebView，避免反复 create/destroy */
+object WebViewCache {
+    private val map = java.util.concurrent.ConcurrentHashMap<String, WebView>()
+    fun get(app: android.app.Application, key: String): WebView {
+        return map.getOrPut(key) {
+            // 注意：factory 里若是新建会走 WebView(ctx)；缓存实例在 Activity 销毁时仍可存活于 appContext
+            WebView(app)
+        }
+    }
+    fun clear(key: String) { map.remove(key)?.destroy() }
 }
