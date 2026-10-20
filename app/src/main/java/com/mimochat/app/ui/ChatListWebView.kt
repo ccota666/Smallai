@@ -329,7 +329,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   position:relative;z-index:20;background:inherit;}
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
-#fs .fs-body{padding:6px 10px 40px;}
+#fs .fs-body{padding:6px 10px 40px;overflow:auto;touch-action:none;}
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:100%;width:100%;box-sizing:border-box;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
 #fs .mermaid svg{max-width:100%;height:auto;}
@@ -598,7 +598,7 @@ document.addEventListener('click', function(e){
 
 function saveMermaidImage(box){
   try {
-    var svg = box.querySelector('svg');
+    var svg = box.querySelector('.mermaid svg') || box.querySelector('.mmpad svg');
     if (!svg){ toastJs('未找到图'); return; }
     var xml = new XMLSerializer().serializeToString(svg);
     var img = new Image();
@@ -681,8 +681,16 @@ function bindBoxOps(){
         fsBtn.onclick = function(e){
           e.stopPropagation();
           var t = fsBtn.getAttribute('data-title') || '';
-          // 直接取已渲染的 body，不走 data 属性
-          var real = body ? body.innerHTML : '';
+          var real = '';
+          if (box.querySelector('.mermaid')){
+            var msrc = box.querySelector('.mmsrc');
+            var code = msrc ? msrc.textContent : '';
+            if (!code) code = box.querySelector('.mermaid').getAttribute('data-src') || '';
+            real = '<div class="mermaid">' + esc(code) + '</div>';
+            openFs(t, real);
+            return;
+          }
+          real = body ? body.innerHTML : '';
           openFs(t, real);
         };
       }
@@ -858,7 +866,7 @@ function blockMd(src){
           '<div class="mmpad"><div class="mermaid">' + esc(body) + '</div></div>', 'Mermaid 图', 'mermaid');
         var mbody = document.createElement('div');
         mbody.className = 'mmpad';
-        mbody.innerHTML = '<div class="mermaid">' + esc(body) + '</div>';
+        mbody.innerHTML = '<div class="mermaid" data-src="' + esc(body) + '">' + esc(body) + '</div>';
         mbox.appendChild(mbody);
         var msrc = document.createElement('pre');
         msrc.className = 'mmsrc';
@@ -1070,9 +1078,9 @@ function msgHtml(m){
   }
   if (!isUser && !m.pending && m.content){
     h += '<div class="actions">'
-      + '<button onclick="Android.onAction(&quot;copy&quot;,' + m.id + ')">复制</button>'
-      + '<button onclick="askConfirm(&quot;重新生成将覆盖当前回答？&quot;,function(){Android.onAction(&quot;regen&quot;,' + m.id + ')})">重新生成</button>'
-      + '<button onclick="askConfirm(&quot;删除这条问答？不可恢复&quot;,function(){Android.onAction(&quot;delete&quot;,' + m.id + ')})">删除</button>'
+      + '<button class="act" title="复制" onclick="Android.onAction(&quot;copy&quot;,' + m.id + ')">'+ICONS.copy+'</button>'
+      + '<button class="act" title="重新生成" onclick="askConfirm(&quot;重新生成将覆盖当前回答？&quot;,function(){Android.onAction(&quot;regen&quot;,' + m.id + ')})">'+ICONS.refresh+'</button>'
+      + '<button class="act act-danger" title="删除" onclick="askConfirm(&quot;删除这条问答？不可恢复&quot;,function(){Android.onAction(&quot;delete&quot;,' + m.id + ')})">'+ICONS.del+'</button>'
       + '</div>';
   }
   return h + '</div></div>';
