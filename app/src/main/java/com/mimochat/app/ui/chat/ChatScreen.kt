@@ -180,6 +180,7 @@ fun ChatScreen(
     val streaming by vm.streaming.collectAsState()
     val reasoning by vm.reasoning.collectAsState()
     val isThinking by vm.isThinking.collectAsState()
+    val apiStatus by vm.apiStatus.collectAsState()
     val thinkingSeconds by vm.thinkingSeconds.collectAsState()
     val generating by vm.isGenerating.collectAsState()
     val settings by vm.settings.collectAsState()
@@ -387,7 +388,7 @@ fun ChatScreen(
                         buildMessagesJson(messages, streaming, reasoning, generating)
                     }
                     val streamJson = remember(generating, streaming, reasoning, isThinking, thinkingSeconds) {
-                        buildStreamingJson(generating, streaming, reasoning, isThinking, thinkingSeconds)
+                        buildStreamingJson(generating, streaming, reasoning, isThinking, thinkingSeconds, apiStatus)
                     }
                     val density = androidx.compose.ui.platform.LocalDensity.current
                     val topBarH = with(density) { 52.dp.toPx() }
@@ -1348,7 +1349,8 @@ private fun buildStreamingJson(
     streaming: String,
     reasoning: String,
     isThinking: Boolean,
-    seconds: Float
+    seconds: Float,
+    status: String = ""
 ): String {
     return JSONObject()
         .put("active", generating)
@@ -1356,5 +1358,6 @@ private fun buildStreamingJson(
         .put("reasoning", reasoning)
         .put("thinking", isThinking)
         .put("seconds", seconds.toDouble())
+        .put("status", status)
         .toString()
 }

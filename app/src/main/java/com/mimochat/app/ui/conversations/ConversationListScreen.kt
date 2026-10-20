@@ -209,14 +209,19 @@ fun ConversationListScreen(
                     }
                 }
             } else {
-                val firstUserMap = remember(previews) {
-                    previews.filter { it.role == "user" }.associate { it.conversationId to it.content.trim() }
+                val previewMap = remember(previews) {
+                    val u = HashMap<Long, String>()
+                    val a = HashMap<Long, String>()
+                    previews.forEach {
+                        if (it.role == "user") u[it.conversationId] = it.content.trim()
+                        else a[it.conversationId] = it.content.trim()
+                    }
+                    u to a
                 }
-                val firstAiMap = remember(previews) {
-                    previews.filter { it.role == "assistant" }.associate { it.conversationId to it.content.trim() }
-                }
+                val firstUserMap = previewMap.first
+                val firstAiMap = previewMap.second
                 LazyColumn(Modifier.weight(1f)) {
-                    items(conversations, key = { it.id }) { conv ->
+                    items(conversations, key = { it.id }, contentType = { "conv" }) { conv ->
                         ConversationItem(
                             conv = conv,
                             previewQuestion = { id -> firstUserMap[id] },

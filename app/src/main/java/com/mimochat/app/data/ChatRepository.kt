@@ -14,6 +14,8 @@ class ChatRepository(
     private val settingsRepo: SettingsRepository
 ) {
     private val api = MiMoApi()
+    /** 空=正常；「正在压缩上文…」等 */
+    val apiStatus = kotlinx.coroutines.flow.MutableStateFlow("")
 
     fun observeConversations() = db.conversationDao().observeAllWithMessages()
     fun observeConversation(id: Long) = db.conversationDao().observeById(id)
@@ -261,35 +263,55 @@ class ChatRepository(
 
     private suspend fun buildHistory(convId: Long, excludeId: Long): List<ApiMessage> {
         val settings = settingsRepo.settings.first()
+        val conv = db.conversationDao().getById(convId)
         val all = db.messageDao().getByConversation(convId)
             .filter { it.id != excludeId && !it.pending && it.content.isNotBlank() }
         val limit = settings.contextLimit.coerceAtLeast(4)
+
         if (!settings.compressOverflow || all.size <= limit) {
-            // 不压缩：直接截最近 limit 条
             return toApiMessages(all.takeLast(limit))
         }
-        // 超出 limit → 用户本次提问前，先把「上文」压缩成摘要
-        val older = all.dropLast(limit)
+
         val recent = all.takeLast(limit)
-        val summary = runCatching {
-            api.completeOnce(
-                settings,
-                settings.compressPrompt,
-                older.joinToString("\n") {
-                    (if (it.role == "user") "用户：" else "助手：") + it.content
+        val older = all.dropLast(limit)
+        // 已被摘要覆盖的部分不再重复压缩
+        val upTo = conv?.summaryUpTo ?: 0L
+        val newOlder = older.filter { it.id > upTo }
+
+        // 攒够一批（≥ limit 条新材料）才压缩，避免每问必压
+        var summary = conv?.contextSummary ?: ""
+        var newUpTo = upTo
+        if (newOlder.size >= limit || (summary.isBlank() && older.isNotEmpty())) {
+            apiStatus.value = "正在压缩上文…"
+            try {
+                val text = newOlder.joinToString("\n") {
+                    (if (it.role == "user") "用户：" else "助手：") + it.content.take(500)
                 }
-            )
-        }.getOrDefault("")
+                val oldSum = if (summary.isBlank()) "" else "【已有前情提要】\n$summary\n\n"
+                summary = api.completeOnce(
+                    settings.copy(model = "mimo-v2.6-flash"),  // 压缩用便宜模型
+                    settings.compressPrompt,
+                    oldSum + "【待压缩对话】\n" + text
+                ).trim()
+                newUpTo = newOlder.last().id
+                db.conversationDao().update(
+                    (conv ?: return toApiMessages(recent)).copy(
+                        contextSummary = summary,
+                        summaryUpTo = newUpTo
+                    )
+                )
+            } finally {
+                apiStatus.value = ""
+            }
+        }
+
         val sys = settings.systemPrompt + (
             if (summary.isBlank()) "" else "\n\n【前情提要】\n$summary"
-        )
-        // 摘要走 system，最近消息原样
-        val list = toApiMessages(recent).toMutableList()
-        // buildRequest 会再加 system，这里用 messages 前插一条 system 可绕过
-        // 简化：把摘要拼进第一条 user 前的 system —— 直接改 settings 传递
+            )
         lastCompressedSystem = sys
-        return list
+        return toApiMessages(recent)
     }
+
 
     @Volatile private var lastCompressedSystem: String = ""
 

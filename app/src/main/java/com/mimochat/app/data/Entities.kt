@@ -9,7 +9,12 @@ data class Conversation(
     val title: String,
     val model: String,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    /** 历史压缩后的「前情提要」 */
+    val contextSummary: String = "",
+    /** 摘要已覆盖到哪条消息 id */
+    val summaryUpTo: Long = 0L,
+    val mode: String = "work"
 )
 
 @Entity(tableName = "messages")

@@ -1183,7 +1183,7 @@ window.__update = function(msgs, streaming){
       if (!hasR2 && !hasC2){
         var pe = document.createElement('div');
         pe.className = 'pending';
-        pe.textContent = '正在思考…';
+        pe.textContent = (streaming.status && String(streaming.status).length) ? streaming.status : '正在思考…';
         bubble.appendChild(pe);
       }
     }
