@@ -645,17 +645,18 @@ function bindBoxOps(){
       }
       // 展开按钮在右下角；点击状态记入 expandedCodeKeys，重绘后仍展开
       var bodyEl = box.querySelector('.codebody');
-      if (bodyEl && (bodyEl.classList.contains('clamped') || bodyEl.dataset.foldable === '1')){
+      if (bodyEl && bodyEl.dataset.foldable === '1'){
         var exp = document.createElement('button');
         exp.className = 'expand-btn';
-        exp.textContent = ' 展开';
         var raw = bodyEl.textContent || '';
+        var initClamped = bodyEl.classList.contains('clamped');
+        exp.textContent = initClamped ? ' 展开' : ' 收起';
         exp.onclick = function(e){
           e.stopPropagation();
           var on = bodyEl.classList.toggle('clamped');
           var fade = bodyEl.querySelector('.fade');
           if (fade) fade.style.display = on ? '' : 'none';
-          exp.textContent = on ? ' 展开' : '收起';
+          exp.textContent = on ? ' 展开' : ' 收起';
           if (!on) expandedCodeKeys[codeKey(raw)] = 1;
           else delete expandedCodeKeys[codeKey(raw)];
         };
@@ -832,6 +833,9 @@ function isDisplayMathStart(line){ return trim(line).indexOf(D + D) === 0; }
 /* ---------- block markdown ---------- */
 var SEC_COLORS = ['#2F6FED','#C678DD','#E67E22','#27AE60','#E74C3C','#16A085'];
 function blockMd(src){
+  // 每次渲染从 0 计数，否则流式反复重绘会让五彩/彩虹色一直跳
+  window.__secIdx = 0;
+  window.__boldIdx = 0;
   var out = '';
   var lines = String(src == null ? '' : src).split('\n');
   var i = 0;
