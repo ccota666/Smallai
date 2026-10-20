@@ -959,7 +959,7 @@ function msgHtml(m){
   }
   if (m.content && String(m.content).length)
     h += '<div class="content">' + blockMd(m.content) + '</div>';
-  else if (m.pending)
+  else if (m.pending && !(m.reasoning && String(m.reasoning).length))
     h += '<div class="pending">正在思考…</div>';
   if (m.citations && m.citations.length){
     h += '<details class="cites"><summary>参考来源（' + m.citations.length + '）</summary><div class="cites-body">';
@@ -1008,7 +1008,7 @@ function renderChat(msgs, streaming){
   var prevTop = window.scrollY;
   var h = '';
   for (var i = 0; i < msgs.length; i++) h += msgHtml(msgs[i]);
-  h += streamHtml(streaming);
+  // 不再额外拼 #msg-stream：流式内容已在 msgs 最后一条里，避免双份思考/正在思考
   el.innerHTML = h;
   renderMath(el); renderCode(el); renderMermaid();
   bindBoxOps(); bindLinks();
@@ -1136,9 +1136,10 @@ window.__update = function(msgs, streaming){
   if (typeof msgs === 'string') msgs = JSON.parse(msgs);
   if (typeof streaming === 'string') streaming = JSON.parse(streaming);
 
-  var streamNode = document.getElementById('msg-stream');
-  // 流式增量更新：只改 reasoning / content 两处，不替换整节点
-  // → 思考折叠、代码展开按钮等 DOM 状态都不会丢
+  // 流式增量更新：定位「最后一条 AI 消息」，只改 reasoning / content
+  var listEl = document.getElementById('list');
+  var allMsg = listEl ? listEl.querySelectorAll('.msg') : [];
+  var streamNode = allMsg.length ? allMsg[allMsg.length - 1] : null;
   if (streamNode && streaming && streaming.active && msgs.length === window.__lastMsgCount){
     window.__progUntil = Date.now() + 80;
     var prevTop = window.scrollY;
