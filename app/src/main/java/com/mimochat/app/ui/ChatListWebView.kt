@@ -134,6 +134,29 @@ fun ChatListWebView(
                     }
 
                     @JavascriptInterface
+                    fun saveImage(dataUrl: String, name: String) {
+                        try {
+                            val b64 = dataUrl.substringAfter("base64,", "")
+                            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                            val values = android.content.ContentValues().apply {
+                                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, name.ifBlank { "img.png" })
+                                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/MiMoChat")
+                                }
+                            }
+                            val resolver = ctx.contentResolver
+                            val uri = resolver.insert(
+                                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+                            ) ?: throw IllegalStateException("无法创建媒体文件")
+                            resolver.openOutputStream(uri)?.use { it.write(bytes) }
+                            android.widget.Toast.makeText(ctx, "已保存到相册 Pictures/MiMoChat", android.widget.Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(ctx, "保存失败：${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    @JavascriptInterface
                     fun copyText(text: String) {
                         (ctx as? Activity)?.runOnUiThread {
                             val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
@@ -343,7 +366,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .actions{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
 .actions button{border:1px solid $borderC;background:transparent;color:$muted;
-  border-radius:12px;padding:4px 12px;font-size:12px;cursor:pointer;}
+  border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer;display:inline-flex;
+  align-items:center;justify-content:center;}
+.actions .act-danger{color:#E74C3C;border-color:#E74C3C;}
+.bhead button{border:1px solid $borderC;background:transparent;color:$muted;
+  border-radius:8px;padding:5px 8px;cursor:pointer;display:inline-flex;
+  align-items:center;line-height:0;}
 .pending{color:$muted;font-style:italic;}
 /* 高亮 */
 .hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-type,.hljs-name,
@@ -384,6 +412,16 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 <script>
 var D = String.fromCharCode(36);
 var fsScale = 1;
+
+
+var ICONS = {
+  copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  expand: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
+  save: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  swap: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>',
+  refresh: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 9A9 9 0 1 0 21 12"/></svg>',
+  del: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+};
 
 function esc(s){
   return String(s == null ? '' : s)
@@ -532,11 +570,17 @@ function closeFs(){
 }
 
 /* 顶栏：复制 + 全屏 */
-function headHtml(label, copyText, fsHtml, fsTitle){
+function headHtml(label, copyText, fsHtml, fsTitle, kind){
+  var extra = '';
+  if (kind === 'mermaid'){
+    extra = '<button data-act="togglemm" title="图/代码">'+ICONS.swap+'</button>'
+          + '<button data-act="savemm" title="保存图片">'+ICONS.save+'</button>';
+  }
   return '<div class="bhead"><span>' + esc(label) + '</span>'
     + '<div class="ops">'
-    + '<button data-act="copy" data-t="' + esc(copyText) + '">复制</button>'
-    + '<button data-act="fs" data-title="' + esc(fsTitle || label) + '">全屏</button>'
+    + extra
+    + '<button data-act="copy" title="复制" data-t="' + esc(copyText) + '">'+ICONS.copy+'</button>'
+    + '<button data-act="fs" title="全屏" data-title="' + esc(fsTitle || label) + '">'+ICONS.expand+'</button>'
     + '</div></div>';
 }
 var expandedCodeKeys = {};
@@ -551,6 +595,33 @@ document.addEventListener('click', function(e){
   }
 }, true);
 
+
+function saveMermaidImage(box){
+  try {
+    var svg = box.querySelector('svg');
+    if (!svg){ toastJs('未找到图'); return; }
+    var xml = new XMLSerializer().serializeToString(svg);
+    var img = new Image();
+    img.onload = function(){
+      var pad = 16;
+      var cv = document.createElement('canvas');
+      cv.width = (img.width||600) + pad*2;
+      cv.height = (img.height||400) + pad*2;
+      var cx = cv.getContext('2d');
+      cx.fillStyle = '#FFFFFF';
+      cx.fillRect(0,0,cv.width,cv.height);
+      cx.drawImage(img, pad, pad);
+      var url = cv.toDataURL('image/png');
+      Android.saveImage(url, 'mermaid_' + Date.now() + '.png');
+    };
+    img.onerror = function(){ toastJs('导出失败'); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+  } catch(e){ toastJs('导出失败'); }
+}
+function toastJs(t){
+  try { Android.copyText(t); } catch(e){}  // 兜底提示
+}
+
 function bindBoxOps(){
   var heads = document.querySelectorAll('.box .bhead');
   for (var i = 0; i < heads.length; i++){
@@ -559,6 +630,26 @@ function bindBoxOps(){
       var body = box.lastChild;
       var copyBtn = head.querySelector('button[data-act=copy]');
       var fsBtn = head.querySelector('button[data-act=fs]');
+      var tgl = head.querySelector('button[data-act=togglemm]');
+      var sav = head.querySelector('button[data-act=savemm]');
+      if (tgl){
+        tgl.onclick = function(e){
+          e.stopPropagation();
+          var mmp = box.querySelector('.mmpad');
+          var src = box.querySelector('.mmsrc');
+          if (mmp && src){
+            var showSrc = mmp.style.display !== 'none';
+            mmp.style.display = showSrc ? 'none' : '';
+            src.style.display = showSrc ? '' : 'none';
+          }
+        };
+      }
+      if (sav){
+        sav.onclick = function(e){
+          e.stopPropagation();
+          saveMermaidImage(box);
+        };
+      }
       // 展开按钮在右下角；点击状态记入 expandedCodeKeys，重绘后仍展开
       var bodyEl = box.querySelector('.codebody');
       if (bodyEl && (bodyEl.classList.contains('clamped') || bodyEl.dataset.foldable === '1')){
@@ -764,11 +855,16 @@ function blockMd(src){
         var mbox = document.createElement('div');
         mbox.className = 'box';
         mbox.innerHTML = headHtml('mermaid', body,
-          '<div class="mmpad"><div class="mermaid">' + esc(body) + '</div></div>', 'Mermaid 图');
+          '<div class="mmpad"><div class="mermaid">' + esc(body) + '</div></div>', 'Mermaid 图', 'mermaid');
         var mbody = document.createElement('div');
         mbody.className = 'mmpad';
         mbody.innerHTML = '<div class="mermaid">' + esc(body) + '</div>';
         mbox.appendChild(mbody);
+        var msrc = document.createElement('pre');
+        msrc.className = 'mmsrc';
+        msrc.style.display = 'none';
+        msrc.innerHTML = '<code>' + esc(body) + '</code>';
+        mbox.appendChild(msrc);
         out += mbox.outerHTML;
       } else {
         var lineN = code.length;
@@ -778,7 +874,7 @@ function blockMd(src){
         cbox.className = 'box codebox-wrap';
         cbox.innerHTML = headHtml(lang, body,
           '<pre><code class="language-' + esc(lang) + '">' + esc(body) + '</code></pre>',
-          lang + ' 代码');
+          lang + ' 代码', 'code');
         var cbody = document.createElement('div');
         cbody.className = 'codebody' + (clamped ? ' clamped' : '');
         if (showFoldBtn) cbody.setAttribute('data-foldable','1');
@@ -1114,6 +1210,19 @@ document.addEventListener('keydown', function(e){
 window.addEventListener('scroll', notifyBottom, {passive:true});
 
 // 点「返回底部」或用户提问 → 恢复跟随
+// 全屏双击缩放
+document.addEventListener('dblclick', function(e){
+  if (!document.getElementById('fs').classList.contains('on')) return;
+  if (fsS > 1.05){ fsS = 1; fsX = 0; fsY = 0; }
+  else {
+    var s0 = fsS;
+    fsS = 2;
+    fsX = e.clientX - (e.clientX - fsX) * (fsS / s0);
+    fsY = e.clientY - (e.clientY - fsY) * (fsS / s0);
+  }
+  applyFsTransform();
+});
+
 window.__follow = function(){
   window.__followMode = true;
   window.__progUntil = Date.now() + 80;

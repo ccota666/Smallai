@@ -419,7 +419,7 @@ private fun CropPreview(
                 drawLine(Color.White.copy(alpha = 0.5f),
                     Offset(left, top + h * i / 3), Offset(right, top + h * i / 3), 1.dp.toPx())
             }
-            val hs = 14.dp.toPx()
+            val hs = 18.dp.toPx()
             listOf(
                 Offset(left, top), Offset(right, top),
                 Offset(left, bottom), Offset(right, bottom),
@@ -440,7 +440,7 @@ private fun hitTest(
 ): String {
     if (crop == null) return "Move"
     val (lt, rb) = crop
-    val edge = 0.05f
+    val edge = 0.12f
     val nearL = kotlin.math.abs(nx - lt.first) < edge
     val nearR = kotlin.math.abs(nx - rb.first) < edge
     val nearT = kotlin.math.abs(ny - lt.second) < edge
