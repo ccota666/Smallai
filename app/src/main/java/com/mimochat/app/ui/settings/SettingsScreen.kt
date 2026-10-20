@@ -106,6 +106,23 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             SectionTitle("API 连接")
+            // Base URL 预设 + 自定义
+            Text("Base URL", style = MaterialTheme.typography.labelLarge)
+            val urlPresets = listOf(
+                "https://api.xiaomimimo.com/v1" to "按量付费 API",
+                "https://token-plan-cn.xiaomimimo.com/v1" to "Token Plan（cn）"
+            )
+            urlPresets.forEach { (u, name) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = baseUrl.trimEnd('/') == u,
+                        onClick = { baseUrl = u; vm.setBaseUrl(u) }
+                    )
+                    Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Text("也可以直接改下面的地址（自定义）", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = { apiKey = it; vm.setApiKey(it) },

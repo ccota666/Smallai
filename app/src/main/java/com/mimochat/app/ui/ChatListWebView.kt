@@ -574,7 +574,7 @@ function headHtml(label, copyText, fsHtml, fsTitle, kind){
   var extra = '';
   if (kind === 'mermaid'){
     extra = '<button data-act="togglemm" title="图/代码">'+ICONS.swap+'</button>'
-          + '<button data-act="savemm" title="保存图片">'+ICONS.save+'</button>';
+          ;
   }
   return '<div class="bhead"><span>' + esc(label) + '</span>'
     + '<div class="ops">'
@@ -631,7 +631,6 @@ function bindBoxOps(){
       var copyBtn = head.querySelector('button[data-act=copy]');
       var fsBtn = head.querySelector('button[data-act=fs]');
       var tgl = head.querySelector('button[data-act=togglemm]');
-      var sav = head.querySelector('button[data-act=savemm]');
       if (tgl){
         tgl.onclick = function(e){
           e.stopPropagation();
@@ -642,12 +641,6 @@ function bindBoxOps(){
             mmp.style.display = showSrc ? 'none' : '';
             src.style.display = showSrc ? '' : 'none';
           }
-        };
-      }
-      if (sav){
-        sav.onclick = function(e){
-          e.stopPropagation();
-          saveMermaidImage(box);
         };
       }
       // 展开按钮在右下角；点击状态记入 expandedCodeKeys，重绘后仍展开
@@ -673,8 +666,8 @@ function bindBoxOps(){
           e.stopPropagation();
           var t = copyBtn.getAttribute('data-t') || '';
           try { Android.copyText(t); } catch(err) {}
-          copyBtn.textContent = '已复制';
-          setTimeout(function(){ copyBtn.textContent = '复制'; }, 1200);
+          copyBtn.innerHTML = '<span style="font-size:12px">已复制</span>';
+          setTimeout(function(){ copyBtn.innerHTML = ICONS.copy; }, 1200);
         };
       }
       if (fsBtn){
