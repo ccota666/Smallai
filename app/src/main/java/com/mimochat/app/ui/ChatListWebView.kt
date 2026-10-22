@@ -708,12 +708,20 @@ function replaceBetween(t, mark, open, close){
 function replaceInlineMath(t){
   var out = '', i = 0;
   while (i < t.length){
+    // LaTeX 定界符 \( ... \)
+    if (t.charAt(i) === '\\' && t.charAt(i+1) === '('){
+      var e = t.indexOf('\\)', i + 2);
+      if (e > i){
+        out += '<span class="math" data-tex="' + esc(t.slice(i+2, e)) + '"></span>';
+        i = e + 2; continue;
+      }
+    }
     if (t.charAt(i) === D){
       if (t.charAt(i+1) === D){ out += D + D; i += 2; continue; }
-      var e = t.indexOf(D, i + 1);
-      if (e > i + 1){
-        out += '<span class="math" data-tex="' + esc(t.slice(i+1, e)) + '"></span>';
-        i = e + 1; continue;
+      var e2 = t.indexOf(D, i + 1);
+      if (e2 > i + 1){
+        out += '<span class="math" data-tex="' + esc(t.slice(i+1, e2)) + '"></span>';
+        i = e2 + 1; continue;
       }
     }
     out += t.charAt(i); i++;
@@ -891,6 +899,33 @@ function blockMd(src){
       }
       continue;
     }
+    // LaTeX 显示公式 \[ ... \]
+    if (trim(line).indexOf('\\[') === 0){
+      var ts = trim(line);
+      var ce = ts.indexOf('\\]');
+      var tex2 = '';
+      if (ce > 2){
+        tex2 = ts.slice(2, ce);
+        i++;
+      } else {
+        i++;
+        var acc2 = [];
+        while (i < lines.length){
+          var lt2 = trim(lines[i]);
+          if (lt2.indexOf('\\]') >= 0){
+            var ix = lt2.indexOf('\\]');
+            acc2.push(lt2.slice(0, ix));
+            i++;
+            break;
+          }
+          acc2.push(lines[i]); i++;
+        }
+        tex2 = acc2.join('\n');
+      }
+      out += '<div class="box"><div class="mathpad"><div class="mathb" data-tex="'
+        + esc(tex2) + '"></div></div></div>';
+      continue;
+    }
     if (isDisplayMathStart(line)){
       var tr = trim(line);
       var tex = '';
@@ -985,6 +1020,7 @@ function blockMd(src){
       if (trim(l) === '') break;
       if (isFence(l) || isHr(l) || isHeading(l) || isQuote(l) || isUl(l) || isOl(l)) break;
       if (isDisplayMathStart(l)) break;
+      if (trim(l).indexOf('\\[') === 0) break;
       if (l.indexOf('|') >= 0 && i + 1 < lines.length && isTableSep(lines[i+1])) break;
       para.push(l); i++;
     }
