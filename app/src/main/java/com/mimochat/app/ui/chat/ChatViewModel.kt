@@ -74,10 +74,10 @@ class ChatViewModel(
         repo.updateMessageContent(id, content, attachmentsJson)
 
     fun init(convId: Long) {
+        // 注意顺序：先判重再赋值，否则 observer 永远不会注册（消息全不显示）
+        if (conversationId == convId && _messages.value.isNotEmpty()) return
         conversationId = convId
         viewModelScope.launch { runCatching { repo.clearStalePending(convId) } }
-        if (conversationId == convId) return
-        conversationId = convId
         viewModelScope.launch {
             repo.observeConversation(convId).collect { _conversation.value = it }
         }

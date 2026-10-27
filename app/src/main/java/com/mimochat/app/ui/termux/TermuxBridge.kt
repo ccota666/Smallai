@@ -79,6 +79,33 @@ object TermuxBridge {
      * 唤醒 Termux 进程（MIUI 后台限制：进程不在时 service 起不来）。
      * 先拉起 Activity 让进程活过来，再延迟发命令。
      */
+    /** 任务已下发，用户可能被带到 Termux —— 发通知方便回来 */
+    fun showReturnNotification(context: Context) {
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                nm.createNotificationChannel(
+                    android.app.NotificationChannel("termux_bridge", "任务提示", android.app.NotificationManager.IMPORTANCE_HIGH)
+                )
+            }
+            val back = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            back?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            val pi = android.app.PendingIntent.getActivity(
+                context, 9001, back,
+                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            val n = androidx.core.app.NotificationCompat.Builder(context, "termux_bridge")
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setContentTitle("任务已下发到 Termux")
+                .setContentText("点此返回 MiMoChat 查看进度")
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .build()
+            nm.notify(9001, n)
+        } catch (e: Exception) { writeLog(context, "notify fail: ${e.message}") }
+    }
+
     fun wakeThenRun(context: Context, command: String, delayMs: Long = 1200L): Boolean {
         try {
             val launch = Intent().apply {
@@ -91,17 +118,9 @@ object TermuxBridge {
             writeLog(context, "WAKE fail: ${e.message}")
         }
         // 延迟执行，等进程起来
-        // 唤醒 Termux 会把它拉到前台 —— 600ms 后把自己带回前台
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            runCatching {
-                val back = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                back?.addFlags(
-                    android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                        android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                )
-                back?.let { context.startActivity(it) }
-            }
-        }, 600L)
+        // 唤醒 Termux 会跳到 Termux（MIUI 需要它激活进程）。
+        // 不强拉前台，改为发一条「点我回来」通知。
+        showReturnNotification(context)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             runInBackground(context, command)
         }, delayMs)
