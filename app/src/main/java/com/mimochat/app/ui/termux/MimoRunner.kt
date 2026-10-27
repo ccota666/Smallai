@@ -32,7 +32,7 @@ object MimoRunner {
     }
 
     /** 生成 ubuntu 内执行的 bash 脚本内容 */
-    fun buildScript(task: String, taskId: Long = 0L): String {
+    fun buildScript(task: String, taskId: Long = 0L, model: String = ""): String {
         val q = task.replace("'", "'\\''")
         val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
         val pidf = "mimo_pid_$taskId"
@@ -40,10 +40,12 @@ object MimoRunner {
             "#!/bin/bash",
             "cd $GUEST_DIR",
             "export PATH=/root/.mimocode/bin:${'$'}{PATH}",
+            // 记忆隔离：每任务独立 mimocode 数据区（memory/sessions 都在里面）
+            "export MIMOCODE_HOME=/sdcard/Download/MiMoChat/mimo_home_$taskId",
             "echo START ${'$'}(date +%s) > $log",
             "echo PWD=${'$'}(pwd) >> $log",
             // 产物尽量落当前目录；不限制 agent 行为，结束后统一收拢
-            "timeout 300 $MIMO_BIN run --yolo '请把产出文件保存到当前工作目录。任务：$q' < /dev/null 2>&1 | tee -a $log &",
+            "timeout 300 $MIMO_BIN run --yolo " + (if (model.isNotBlank()) "--model $model " else "") + "'请把产出文件保存到当前工作目录。任务：$q' < /dev/null 2>&1 | tee -a $log &",
             "echo ${'$'}! > $pidf",
             "wait",
             // 收拢产物：本次新建的文档类文件从 /root、/tmp 拷到共享目录
@@ -75,8 +77,8 @@ object MimoRunner {
     fun logFile(context: Context, taskId: Long): File =
         File(appOutDir(context), "mimo_run_$taskId.log")
 
-    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis()): Boolean {
-        val script = buildScript(task, taskId)
+    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis(), model: String = ""): Boolean {
+        val script = buildScript(task, taskId, model)
         val b64 = Base64.encodeToString(script.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         val scriptName = "mimo_task_$taskId.sh"
         val write = "mkdir -p $HOST_DIR && echo $b64 | base64 -d > $HOST_DIR/$scriptName && chmod +x $HOST_DIR/$scriptName"

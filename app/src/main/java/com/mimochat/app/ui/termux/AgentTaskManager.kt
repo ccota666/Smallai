@@ -50,6 +50,7 @@ object AgentTaskManager {
         convId: Long,
         taskId: Long,
         task: String,
+        model: String = "",
         onMessage: suspend (text: String, attJson: String?) -> Unit
     ) {
         if (jobs[taskId]?.isActive == true) return
@@ -63,7 +64,7 @@ object AgentTaskManager {
             }
             publish(taskId, convId, "⏳ 任务已下发，正在执行…", true)
             val startTime = System.currentTimeMillis()
-            val ok = MimoRunner.start(appCtx, task, taskId)
+            val ok = MimoRunner.start(appCtx, task, taskId, model)
             if (!ok) {
                 publish(taskId, convId, "❌ 无法启动：请检查 Termux 是否允许「外部应用」", false)
                 return@launch
@@ -76,7 +77,8 @@ object AgentTaskManager {
                 if (log.isNotBlank()) {
                     // ANSI reset (ESC[0m) → 显式 <SEG> 标记，JS 靠它切段；
                     // 其余色码去掉，避免污染文本
-                    val marked = log.replace(Regex("\\x1B\\[0m"), "\n<SEG>\n")
+                    val marked = log.replace("\u001B[0m", "\n<SEG>\n")
+                        .replace("[0m]", "\n<SEG>\n")
                         .replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
                     val tail = marked.lines().filter { it.isNotBlank() }.takeLast(200)
                     val live = "⏳ 运行中\n" + tail.joinToString("\n")
@@ -101,7 +103,8 @@ object AgentTaskManager {
             else if (done) "无产物文件"
             else ""
             // 全量日志：最后 [0m] 到 EXIT_CODE=0 也保留
-            val markedLog = log.replace(Regex("\\x1B\\[0m"), "\n<SEG>\n")
+            val markedLog = log.replace("\u001B[0m", "\n<SEG>\n")
+                .replace("[0m]", "\n<SEG>\n")
                 .replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
             val body = buildString {
                 append(title).append('\n')
