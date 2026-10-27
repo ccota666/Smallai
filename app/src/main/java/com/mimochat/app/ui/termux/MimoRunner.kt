@@ -107,6 +107,51 @@ object MimoRunner {
         return t.contains("START ") && !t.contains("END ") && !t.contains("EXIT_CODE")
     }
 
+    /**
+     * 日志按「提示语 / 命令 / 输出」分组：
+     *   [0m          → 新提示语（agent 的一句话说明）
+     *   [0m$ <cmd>   → 执行的命令
+     *   其余行        → 该段输出
+     * 返回 List<LogSection(title, lines)>
+     */
+    data class LogSection(val title: String, val lines: List<String>)
+
+    fun parseLogSections(logText: String): List<LogSection> {
+        val cleaned = logText.replace(Regex("\\x1B\\[[0-9;]*m"), "")
+        val secs = mutableListOf<LogSection>()
+        var title = ""
+        val buf = mutableListOf<String>()
+        fun flush() {
+            if (title.isNotBlank() || buf.isNotEmpty()) {
+                secs.add(LogSection(title, buf.toList()))
+                buf.clear()
+            }
+        }
+        for (raw in cleaned.lines()) {
+            val ln = raw.trimEnd()
+            // 命令行：$ ...
+            val cmd = ln.trim().removePrefix("$").trim()
+            when {
+                ln.isBlank() -> { if (buf.isNotEmpty() || title.isNotBlank()) buf.add("") }
+                ln.trim() == "$" || ln.trim().startsWith("$ ") -> {
+                    buf.add("$ " + cmd)
+                }
+                // 新提示语行（单独一段自然语言，非命令输出）
+                ln.trim().length > 8 && !ln.startsWith(" ") &&
+                    !ln.startsWith("$") && !ln.contains("=") &&
+                    (ln.contains("。") || ln.contains("已") || ln.contains("生成") ||
+                     ln.contains("检查") || ln.contains("注意") || ln.contains("产出") ||
+                     ln.contains("**")) -> {
+                    flush()
+                    title = ln.trim()
+                }
+                else -> buf.add(ln)
+            }
+        }
+        flush()
+        return secs.takeLast(6)
+    }
+
     /** 提取日志结尾的「人话总结」：最后一个 ANSI 块之后到 EXIT_CODE 之前 */
     fun extractSummary(logText: String): String {
         val cleaned = logText.replace(Regex("\\x1B\\[[0-9;]*m"), "")

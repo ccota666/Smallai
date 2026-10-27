@@ -586,19 +586,17 @@ fun ChatScreen(
                                 Toast.makeText(context, "请检查 Termux 是否安装/已打开", Toast.LENGTH_LONG).show()
                                 return@launch
                             }
-                            val steps = mutableListOf<String>()
                             val statusJob = launch {
                                 repeat(90) {
                                     delay(2500)
                                     val log = runCatching {
                                         java.io.File("/storage/emulated/0/Download/MiMoChat/mimo_run.log").readText()
                                     }.getOrDefault("")
-                                    log.lines().forEach { ln ->
-                                        val step = com.mimochat.app.ui.termux.MimoRunner.parseLogLine(ln)
-                                        if (step != null && steps.lastOrNull() != step) steps.add(step)
-                                    }
-                                    if (steps.isNotEmpty()) {
-                                        vm.updateLocalTask(aiId, "⏳ 运行中\n" + steps.takeLast(3).joinToString("\n"))
+                                    if (log.isNotBlank()) {
+                                        // 原样喂日志尾部，由 JS 按「提示语 / 命令 / 输出」分组
+                                        val cleaned = log.replace(Regex("\\x1B\\[[0-9;]*m"), "")
+                                        val tail = cleaned.lines().filter { it.isNotBlank() }.takeLast(50)
+                                        vm.updateLocalTask(aiId, "⏳ 运行中\n" + tail.joinToString("\n"))
                                     }
                                 }
                             }
@@ -1385,21 +1383,25 @@ private fun InputBar(
                     AppIconButton(onClick = onPickFile, icon = Icons.Rounded.Add, contentDescription = "添加文件")
                     AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
                     // 胶囊按钮：智能体 / 退出
-                    TextButton(
+                    // 与旁边图标按钮同高（40dp），紧凑胶囊
+                    androidx.compose.material3.TextButton(
                         onClick = onToggleAgent,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 10.dp, vertical = 2.dp
+                            horizontal = 12.dp, vertical = 0.dp
                         ),
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(20.dp))
                             .background(
-                                if (agentMode) Color(0xFF2F6FED) else MaterialTheme.colorScheme.surfaceVariant
+                                if (agentMode) Color(0xFF2F6FED)
+                                else MaterialTheme.colorScheme.surfaceVariant
                             )
                     ) {
                         Text(
-                            if (agentMode) "智能体" else "智能体",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (agentMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            "智能体",
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+                            color = if (agentMode) Color.White
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Spacer(Modifier.weight(1f))

@@ -412,6 +412,10 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   border:2px solid $accent;border-top-color:transparent;
   animation:sp 0.8s linear infinite;vertical-align:-2px;}
 @keyframes sp{to{transform:rotate(360deg);}}
+.taskcard .sec-title{margin:8px 0 2px;font-size:12.5px;font-weight:600;
+  color:var(--ac);line-height:1.5;}
+.taskcard .sec-out{margin:0 0 6px 2px;font-size:11.5px;color:$muted;
+  white-space:pre-wrap;line-height:1.6;max-height:10em;overflow:hidden;}
 .taskcard .summary{margin-top:8px;padding-top:8px;border-top:1px dashed $borderC;
   white-space:pre-wrap;font-size:12.5px;color:$muted;line-height:1.65;}
 .taskcard .tbody{padding:10px 12px;font-size:13px;line-height:1.7;}
@@ -1140,10 +1144,33 @@ function taskCardHtml(m){
   var icon = running ? '<span class="spin"></span>' : (ok ? '✅' : (err ? '⛔' : '⚙'));
   var h = '<div class="taskcard ' + cls + '"><div class="thead">' + icon
     + '<span>' + esc(title) + '</span></div><div class="tbody">';
+  // 按「提示语 + 下方流动输出」分组渲染
+  var curTitle = null, curBuf = [];
+  function flushSec(){
+    if (curTitle != null || curBuf.length){
+      if (curTitle) h += '<div class="sec-title">' + esc(curTitle) + '</div>';
+      if (curBuf.length){
+        h += '<div class="sec-out">' + esc(curBuf.join('\n')).replace(/\n/g,'<br/>') + '</div>';
+      }
+      curTitle = null; curBuf = [];
+    }
+  }
   bodyLines.forEach(function(ln){
-    if (!String(ln).trim()) return;
-    h += '<div class="step"><span class="ic">' + esc(ln) + '</span></div>';
+    var t = String(ln).trim();
+    if (!t) { if (curBuf.length) curBuf.push(''); return; }
+    // [0m 之后的提示语：整行自然语言，且不是命令/输出片段
+    var isCmd = t.indexOf('$ ') === 0 || t === '$';
+    var isPrompt = !isCmd && t.length > 8 && /[。！？\u4e00-\u9fa5]/.test(t)
+      && curBuf.length === 0 && !/^(EXIT_CODE|START|END|TASK_DIR)/.test(t);
+    if (isPrompt && curTitle == null){
+      curTitle = t; return;
+    }
+    if (isPrompt && curTitle != null && curBuf.length === 0){
+      curTitle = t; return;
+    }
+    curBuf.push(ln);
   });
+  flushSec();
   if (m.attachments && m.attachments.length){
     h += '<div class="att-row" style="margin-top:8px">';
     for (var i=0;i<m.attachments.length;i++) h += attHtml(m.attachments[i]);
