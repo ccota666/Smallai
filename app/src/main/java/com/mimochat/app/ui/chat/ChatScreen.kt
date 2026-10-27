@@ -15,6 +15,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -1341,24 +1342,28 @@ private fun InputBar(
                     AppIconButton(onClick = onPickFile, icon = Icons.Rounded.Add, contentDescription = "添加文件")
                     AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
                     // 胶囊按钮：智能体 / 退出
-                    // 与旁边图标按钮同高（40dp），紧凑胶囊
-                    androidx.compose.material3.TextButton(
-                        onClick = onToggleAgent,
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 12.dp, vertical = 0.dp
-                        ),
+                    // 紧凑胶囊：与图标按钮同高；仅文字+描边变色
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .border(
+                                1.dp,
                                 if (agentMode) Color(0xFF2F6FED)
-                                else MaterialTheme.colorScheme.surfaceVariant
+                                else MaterialTheme.colorScheme.outlineVariant,
+                                RoundedCornerShape(18.dp)
                             )
+                            .then(
+                                if (agentMode) Modifier.clickable { onToggleAgent() }
+                                else Modifier.clickable { onToggleAgent() }
+                            )
+                            .padding(horizontal = 12.dp)
                     ) {
                         Text(
                             "智能体",
-                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-                            color = if (agentMode) Color.White
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            color = if (agentMode) Color(0xFF2F6FED)
                                     else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

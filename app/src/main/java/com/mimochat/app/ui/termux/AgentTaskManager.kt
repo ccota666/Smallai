@@ -55,11 +55,17 @@ object AgentTaskManager {
         if (jobs[taskId]?.isActive == true) return
         val appCtx = context.applicationContext
         val job = scope.launch {
+            publish(taskId, convId, "⏳ 正在检测 Termux 环境…", true)
+            // 先探活：Termux 没开 / 没允许外部应用时立刻失败，不再假装「执行中」
+            if (!MimoRunner.probe(appCtx)) {
+                publish(taskId, convId, "❌ Termux 未运行：请打开 Termux 后重试", false)
+                return@launch
+            }
             publish(taskId, convId, "⏳ 任务已下发，正在执行…", true)
             val startTime = System.currentTimeMillis()
             val ok = MimoRunner.start(appCtx, task, taskId)
             if (!ok) {
-                publish(taskId, convId, "❌ 无法启动：请检查 Termux 是否安装/已打开", false)
+                publish(taskId, convId, "❌ 无法启动：请检查 Termux 是否允许「外部应用」", false)
                 return@launch
             }
             // 轮询日志

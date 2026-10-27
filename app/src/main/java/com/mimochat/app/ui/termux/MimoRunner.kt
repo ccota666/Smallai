@@ -35,18 +35,41 @@ object MimoRunner {
     fun buildScript(task: String, taskId: Long = 0L): String {
         val q = task.replace("'", "'\\''")
         val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
+        val pidf = "mimo_pid_$taskId"
         return listOf(
             "#!/bin/bash",
             "cd $GUEST_DIR",
             "export PATH=/root/.mimocode/bin:${'$'}{PATH}",
             "echo START ${'$'}(date +%s) > $log",
-            "echo IN_UBUNTU_OK >> /sdcard/Download/MiMoChat/bridge_log.txt",
-            "echo TASK_DIR=/sdcard/Download/MiMoChat >> $log",
-            // 并发安全：不 pkill 全局 mimo run；每任务独立 log
-            "timeout 300 $MIMO_BIN run --yolo '请把产出文件保存到当前工作目录即可，不需要刻意列目录或检查环境。任务：$q' < /dev/null 2>&1 | tee -a $log",
+            "echo PWD=${'$'}(pwd) >> $log",
+            // 产物尽量落当前目录；不限制 agent 行为，结束后统一收拢
+            "timeout 300 $MIMO_BIN run --yolo '请把产出文件保存到当前工作目录。任务：$q' < /dev/null 2>&1 | tee -a $log &",
+            "echo ${'$'}! > $pidf",
+            "wait",
+            // 收拢产物：本次新建的文档类文件从 /root、/tmp 拷到共享目录
+            "find /root /tmp -maxdepth 4 -type f -mmin -20 2>/dev/null | while read f; do case ${'$'}f in *.md|*.txt|*.docx|*.pptx|*.xlsx|*.pdf|*.csv|*.html|*.png|*.jpg) cp -n \"${'$'}f\" $GUEST_DIR/ 2>/dev/null ;; esac; done",
             "echo EXIT_CODE=${'$'}{PIPESTATUS[0]} >> $log",
-            "echo END ${'$'}(date +%s) >> $log"
+            "echo END ${'$'}(date +%s) >> $log",
+            "rm -f $pidf"
         ).joinToString("\n")
+    }
+
+
+    /** 环境探活：能写文件到共享目录 = Termux 真的活着 */
+    suspend fun probe(context: Context, timeoutMs: Long = 4000): Boolean {
+        val f = File(appOutDir(context), "bridge_probe.txt")
+        f.delete()
+        val ok = TermuxBridge.runInBackground(context, "echo PONG > $HOST_DIR/bridge_probe.txt")
+        if (!ok) return false
+        val t0 = System.currentTimeMillis()
+        while (System.currentTimeMillis() - t0 < timeoutMs) {
+            kotlinx.coroutines.delay(300)
+            if (f.exists() && f.readText().contains("PONG")) {
+                f.delete()
+                return true
+            }
+        }
+        return false
     }
 
     fun logFile(context: Context, taskId: Long): File =
@@ -170,9 +193,13 @@ object MimoRunner {
 
     /** 中断当前 mimo 任务 */
     fun cancel(context: Context, taskId: Long = 0L): Boolean {
+        val pidf = "mimo_pid_$taskId"
         val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
-        val cmd = "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- " +
-            "/bin/bash -lc 'echo CANCELLED >> /sdcard/Download/MiMoChat/$log'"
+        // 只杀本任务：按 pid 文件 / 脚本名匹配，不动别的并发任务
+        val cmd = "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- /bin/bash -lc '" +
+            "if [ -f /sdcard/Download/MiMoChat/$pidf ]; then kill ${'$'}(cat /sdcard/Download/MiMoChat/$pidf) 2>/dev/null; fi; " +
+            "pkill -f mimo_task_$taskId 2>/dev/null; " +
+            "echo CANCELLED >> /sdcard/Download/MiMoChat/$log'"
         return TermuxBridge.runInBackground(context, cmd)
     }
 
