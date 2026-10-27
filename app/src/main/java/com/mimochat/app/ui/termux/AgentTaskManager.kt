@@ -74,8 +74,11 @@ object AgentTaskManager {
                 kotlinx.coroutines.delay(2500)
                 val log = runCatching { logFile.readText() }.getOrDefault("")
                 if (log.isNotBlank()) {
-                    // 保留 ESC[0m]（[0m]）标记，JS 靠它切「提示语/命令/写入/技能」
-                    val tail = log.lines().filter { it.isNotBlank() }.takeLast(80)
+                    // ANSI reset (ESC[0m) → 显式 <SEG> 标记，JS 靠它切段；
+                    // 其余色码去掉，避免污染文本
+                    val marked = log.replace(Regex("\\x1B\\[0m"), "\n<SEG>\n")
+                        .replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
+                    val tail = marked.lines().filter { it.isNotBlank() }.takeLast(120)
                     publish(taskId, convId, "⏳ 运行中\n" + tail.joinToString("\n"), true)
                 }
                 if (log.contains("END ") || log.contains("EXIT_CODE=")) break

@@ -1157,14 +1157,12 @@ function taskCardHtml(m){
   //   [0m]→  ...     = 调用技能 → 一行小字
   //   其余输出         = 一行小字 + 省略号
   // 直到 EXIT_CODE=0
-  var ESC0M = String.fromCharCode(27) + '[0m';
   var raw = c;
   var exitIdx = raw.lastIndexOf('EXIT_CODE=');
   if (exitIdx > 0) raw = raw.slice(0, exitIdx);
-  // 用 [0m] 切段
-  var parts = raw.split(ESC0M);
-  // 若日志没有 ESC（旧格式），退化成整段
-  if (parts.length <= 1) parts = [raw];
+  // 用显式 <SEG> 切段（Kotlin 侧把 ANSI reset 转成它，避免 ESC 丢失）
+  var parts = raw.split('<SEG>');
+  if (parts.length <= 1) parts = raw.split(/\n\s*\n/);
   function oneLine(t){
     t = String(t).replace(/\s+/g, ' ').trim();
     return t.length > 90 ? t.slice(0, 90) + '…' : t;
