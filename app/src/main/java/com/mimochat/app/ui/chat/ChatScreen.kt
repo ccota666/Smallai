@@ -237,6 +237,16 @@ fun ChatScreen(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val voiceRecorder = remember { com.mimochat.app.ui.VoiceRecorder(context) }
     var agentMode by remember { mutableStateOf(false) }
+    val reqTermuxPerm = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            agentMode = true
+            Toast.makeText(context, "智能体模式已开启，发送即执行任务", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "需要 Termux 的 RUN_COMMAND 权限才能下发任务", Toast.LENGTH_LONG).show()
+        }
+    }
     var agentRunning by remember { mutableStateOf(false) }
     var voiceRecording by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
@@ -489,8 +499,16 @@ fun ChatScreen(
                         if (!com.mimochat.app.ui.termux.TermuxBridge.isTermuxInstalled(context)) {
                             Toast.makeText(context, "未检测到 Termux，请先安装并在 Termux 设置里允许外部应用", Toast.LENGTH_LONG).show()
                         } else {
+                        val perm = "com.termux.permission.RUN_COMMAND"
+                        val granted = context.checkSelfPermission(perm) ==
+                            android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (!granted) {
+                            Toast.makeText(context, "需要授权 Termux 命令权限", Toast.LENGTH_SHORT).show()
+                            reqTermuxPerm.launch(perm)
+                        } else {
                             agentMode = true
                             Toast.makeText(context, "智能体模式已开启，发送即执行任务", Toast.LENGTH_SHORT).show()
+                        }
                         }
                     } else {
                         agentMode = false
