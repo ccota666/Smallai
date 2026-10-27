@@ -416,6 +416,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   color:var(--ac);line-height:1.5;}
 .taskcard .sec-out{margin:0 0 6px 2px;font-size:11.5px;color:$muted;
   white-space:pre-wrap;line-height:1.6;max-height:10em;overflow:hidden;}
+.taskcard .log-tip{margin:8px 0 2px;font-size:12.5px;line-height:1.65;color:$fg;}
+.taskcard .log-cmd{margin:3px 0 3px 2px;font-size:11px;color:$accent;
+  font-family:ui-monospace,Consolas,monospace;opacity:.9;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.taskcard .log-min{margin:2px 0 2px 2px;font-size:11px;color:$muted;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.75;}
 .taskcard .summary{margin-top:8px;padding-top:8px;border-top:1px dashed $borderC;
   white-space:pre-wrap;font-size:12.5px;color:$muted;line-height:1.65;}
 .taskcard .tbody{padding:10px 12px;font-size:13px;line-height:1.7;}
@@ -1144,33 +1150,57 @@ function taskCardHtml(m){
   var icon = running ? '<span class="spin"></span>' : (ok ? '✅' : (err ? '⛔' : '⚙'));
   var h = '<div class="taskcard ' + cls + '"><div class="thead">' + icon
     + '<span>' + esc(title) + '</span></div><div class="tbody">';
-  // 按「提示语 + 下方流动输出」分组渲染
-  var curTitle = null, curBuf = [];
-  function flushSec(){
-    if (curTitle != null || curBuf.length){
-      if (curTitle) h += '<div class="sec-title">' + esc(curTitle) + '</div>';
-      if (curBuf.length){
-        h += '<div class="sec-out">' + esc(curBuf.join('\n')).replace(/\n/g,'<br/>') + '</div>';
-      }
-      curTitle = null; curBuf = [];
-    }
+  // 日志解析（按用户确认的规则）：
+  //   [0m]   + 文字  = 提示语 → 正常显示
+  //   [0m]$  + cmd   = 执行命令 → 一行小字
+  //   [0m]←  ...     = 写入     → 一行小字
+  //   [0m]→  ...     = 调用技能 → 一行小字
+  //   其余输出         = 一行小字 + 省略号
+  // 直到 EXIT_CODE=0
+  var ESC0M = String.fromCharCode(27) + '[0m';
+  var raw = c;
+  var exitIdx = raw.lastIndexOf('EXIT_CODE=');
+  if (exitIdx > 0) raw = raw.slice(0, exitIdx);
+  // 用 [0m] 切段
+  var parts = raw.split(ESC0M);
+  // 若日志没有 ESC（旧格式），退化成整段
+  if (parts.length <= 1) parts = [raw];
+  function oneLine(t){
+    t = String(t).replace(/\s+/g, ' ').trim();
+    return t.length > 90 ? t.slice(0, 90) + '…' : t;
   }
-  bodyLines.forEach(function(ln){
-    var t = String(ln).trim();
-    if (!t) { if (curBuf.length) curBuf.push(''); return; }
-    // [0m 之后的提示语：整行自然语言，且不是命令/输出片段
-    var isCmd = t.indexOf('$ ') === 0 || t === '$';
-    var isPrompt = !isCmd && t.length > 8 && /[。！？\u4e00-\u9fa5]/.test(t)
-      && curBuf.length === 0 && !/^(EXIT_CODE|START|END|TASK_DIR)/.test(t);
-    if (isPrompt && curTitle == null){
-      curTitle = t; return;
+  parts.forEach(function(seg){
+    var t = seg.replace(/^\n+/, '').replace(/\n+$/, '');
+    if (!t.trim()) return;
+    var lines = t.split('\n').filter(function(x){ return String(x).trim(); });
+    if (!lines.length) return;
+    var first = lines[0];
+    var f = first.trim();
+    // 命令
+    if (f.indexOf('$') === 0){
+      h += '<div class="log-cmd">▸ ' + esc(oneLine(f.replace(/^\$ ?/, ''))) + '</div>';
+      return;
     }
-    if (isPrompt && curTitle != null && curBuf.length === 0){
-      curTitle = t; return;
+    // 写入 / 技能
+    if (f.indexOf('←') >= 0 || /Write|写入|Creating/.test(f)){
+      h += '<div class="log-min">← ' + esc(oneLine(f.replace(/^.*←\s*/, ''))) + '</div>';
+      return;
     }
-    curBuf.push(ln);
+    if (f.indexOf('→') >= 0 || /skill|技能/.test(f)){
+      h += '<div class="log-min">→ ' + esc(oneLine(f)) + '</div>';
+      return;
+    }
+    // 提示语：自然语言，正常显示
+    var isProse = /[。！？\u4e00-\u9fa5]/.test(f) && f.length > 6
+      && !/^[A-Za-z_]+ = /.test(f) && f.indexOf('EXIT_CODE') < 0
+      && f.indexOf('START ') < 0 && f.indexOf('END ') < 0;
+    if (isProse){
+      h += '<div class="log-tip">' + esc(f) + '</div>';
+      return;
+    }
+    // 其余输出：一行小字
+    h += '<div class="log-min">' + esc(oneLine(lines.join(' · '))) + '</div>';
   });
-  flushSec();
   if (m.attachments && m.attachments.length){
     h += '<div class="att-row" style="margin-top:8px">';
     for (var i=0;i<m.attachments.length;i++) h += attHtml(m.attachments[i]);

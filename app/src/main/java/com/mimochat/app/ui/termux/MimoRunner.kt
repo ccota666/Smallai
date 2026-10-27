@@ -43,7 +43,7 @@ object MimoRunner {
             "echo IN_UBUNTU_OK >> /sdcard/Download/MiMoChat/bridge_log.txt",
             "echo TASK_DIR=/sdcard/Download/MiMoChat >> $log",
             // 并发安全：不 pkill 全局 mimo run；每任务独立 log
-            "timeout 300 $MIMO_BIN run --yolo '任务必须在 /sdcard/Download/MiMoChat 目录下完成，所有文件写入该绝对路径。任务：$q' < /dev/null 2>&1 | tee -a $log",
+            "timeout 300 $MIMO_BIN run --yolo '请把产出文件保存到当前工作目录即可，不需要刻意列目录或检查环境。任务：$q' < /dev/null 2>&1 | tee -a $log",
             "echo EXIT_CODE=${'$'}{PIPESTATUS[0]} >> $log",
             "echo END ${'$'}(date +%s) >> $log"
         ).joinToString("\n")
