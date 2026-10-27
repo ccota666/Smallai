@@ -425,6 +425,10 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .taskcard .filebar{margin-top:10px;padding-top:8px;
   border-top:1px solid $borderC;font-size:11.5px;color:$muted;}
 .taskcard .filebar .fb-text{margin-bottom:4px;line-height:1.5;}
+.taskcard .log-full{margin-top:8px;}
+.taskcard .log-full summary{cursor:pointer;font-size:11px;color:$muted;}
+.taskcard .log-full pre{margin:6px 0 0;padding:8px;background:$codeBg;border-radius:8px;
+  font-size:10.5px;line-height:1.5;white-space:pre-wrap;max-height:240px;overflow:auto;}
 .taskcard .summary{margin-top:8px;padding-top:8px;border-top:1px dashed $borderC;
   white-space:pre-wrap;font-size:12.5px;color:$muted;line-height:1.65;}
 .taskcard .tbody{padding:10px 12px;font-size:13px;line-height:1.7;}
@@ -1171,7 +1175,7 @@ function taskCardHtml(m){
   if (parts.length <= 1) parts = raw.split(/\n\s*\n/);
   function oneLine(t){
     t = String(t).replace(/\s+/g, ' ').trim();
-    return t.length > 90 ? t.slice(0, 90) + '…' : t;
+    return t.length > 160 ? t.slice(0, 160) + '…' : t;
   }
   parts.forEach(function(seg){
     var t = seg.replace(/^\n+/, '').replace(/\n+$/, '');
@@ -1202,9 +1206,21 @@ function taskCardHtml(m){
       h += '<div class="log-tip">' + esc(f) + '</div>';
       return;
     }
-    // 其余输出：一行小字
-    h += '<div class="log-min">' + esc(oneLine(lines.join(' · '))) + '</div>';
+    // 其余输出：最多 6 行小字，保留更多信息
+    var shown = lines.slice(0, 6).map(oneLine);
+    if (lines.length > 6) shown.push('…');
+    shown.forEach(function(l){
+      h += '<div class="log-min">' + esc(l) + '</div>';
+    });
   });
+
+  // 完整日志可展开（兜底，保证不丢）
+  var fullLog = c.replace(/<SEG>/g, '\n').replace(/<FILES>[\s\S]*?<\/FILES>/g, '')
+    .replace(/^\s*任务完成\s*/, '').replace(/^\s*任务中断\s*/, '').replace(/^\s*超时未完成\s*/, '');
+  if (fullLog.trim().length > 40){
+    h += '<details class="log-full"><summary>完整日志</summary><pre>'
+      + esc(fullLog.trim()) + '</pre></details>';
+  }
   // 底部文件栏（在日志之后）
   var fm = raw.match(/<FILES>([\s\S]*?)<\/FILES>/);
   var fileList = fm ? fm[1].trim() : '';

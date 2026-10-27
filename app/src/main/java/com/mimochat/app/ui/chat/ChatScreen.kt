@@ -92,6 +92,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -249,6 +250,7 @@ fun ChatScreen(
         }
     }
     var agentRunning by remember { mutableStateOf(false) }
+    var agentTaskId by remember { mutableLongStateOf(0L) }
     var voiceRecording by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         onDispose { voiceRecorder.cancel() }
@@ -576,6 +578,7 @@ fun ChatScreen(
                         attachments = emptyList()
                         agentRunning = true
                         val taskId = System.currentTimeMillis()
+                        agentTaskId = taskId
                         val conv = vm.conversationId
                         scope.launch {
                             // 用户提问入库，显示气泡
@@ -605,7 +608,7 @@ fun ChatScreen(
                 generating = generating,
                 onStop = {
                     if (agentRunning) {
-                        com.mimochat.app.ui.termux.MimoRunner.cancel(context)
+                        com.mimochat.app.ui.termux.MimoRunner.cancel(context, agentTaskId)
                         agentRunning = false
                     }
                     vm.stop()
