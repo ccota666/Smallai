@@ -64,7 +64,7 @@ object AgentTaskManager {
             }
             publish(taskId, convId, "⏳ 任务已下发，正在执行…", true)
             val startTime = System.currentTimeMillis()
-            val ok = MimoRunner.start(appCtx, task, taskId, model)
+            val ok = MimoRunner.start(appCtx, task, taskId, model, convId)
             if (!ok) {
                 publish(taskId, convId, "❌ 无法启动：请检查 Termux 是否允许「外部应用」", false)
                 return@launch
@@ -88,7 +88,7 @@ object AgentTaskManager {
                 if (log.contains("END ") || log.contains("EXIT_CODE=")) break
             }
             val log = runCatching { logFile.readText() }.getOrDefault("")
-            val files = MimoRunner.awaitNewFiles(appCtx, startTime, timeoutMs = 5_000, pollMs = 500)
+            val files = MimoRunner.awaitNewFiles(appCtx, startTime, convId = convId, timeoutMs = 5_000, pollMs = 500)
             val summary = MimoRunner.extractSummary(log)
             // 结尾：标题 + 完整日志（保留 <SEG> 段）+ 底部文件栏
             // 只有真的跑完才有 END；有输出/产物就算成功，不拿「超时」盖住回答

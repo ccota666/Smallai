@@ -23,39 +23,8 @@ object MimoRunner {
     private const val MIMO_BIN = "/root/.mimocode/bin/mimo"
 
     /** 聊天指令：/mimo <任务描述> */
-    fun parse(text: String): String? {
-        val t = text.trim()
-        if (!t.startsWith("/mimo")) return null
-        val task = t.removePrefix("/mimo").trim()
-            .trimEnd('、', '，', '。', '；', '！', '？', ',', '.', ';', '!', '?')
-        return task.ifBlank { null }
-    }
-
-    /** 生成 ubuntu 内执行的 bash 脚本内容 */
-    fun buildScript(task: String, taskId: Long = 0L, model: String = ""): String {
-        val q = task.replace("'", "'\\''")
-        val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
-        val pidf = "mimo_pid_$taskId"
-        return listOf(
-            "#!/bin/bash",
-            "cd $GUEST_DIR",
-            "export PATH=/root/.mimocode/bin:${'$'}{PATH}",
-            // 记忆隔离：每任务独立 mimocode 数据区（memory/sessions 都在里面）
-            "export MIMOCODE_HOME=/sdcard/Download/MiMoChat/mimo_home_$taskId",
-            "echo START ${'$'}(date +%s) > $log",
-            "echo PWD=${'$'}(pwd) >> $log",
-            // 产物尽量落当前目录；不限制 agent 行为，结束后统一收拢
-            "timeout 300 $MIMO_BIN run --yolo " + (if (model.isNotBlank()) "--model $model " else "") + "'请把产出文件保存到当前工作目录。任务：$q' < /dev/null 2>&1 | tee -a $log &",
-            "echo ${'$'}! > $pidf",
-            "wait",
-            // 收拢产物：本次新建的文档类文件从 /root、/tmp 拷到共享目录
-            "find /root /tmp -maxdepth 4 -type f -mmin -20 2>/dev/null | while read f; do case ${'$'}f in *.md|*.txt|*.docx|*.pptx|*.xlsx|*.pdf|*.csv|*.html|*.png|*.jpg) cp -n \"${'$'}f\" $GUEST_DIR/ 2>/dev/null ;; esac; done",
-            "echo EXIT_CODE=${'$'}{PIPESTATUS[0]} >> $log",
-            "echo END ${'$'}(date +%s) >> $log",
-            "rm -f $pidf"
-        ).joinToString("\n")
-    }
-
+    fun convDirHost(convId: Long) = "$HOST_DIR/conv_$convId"
+    fun convDirGuest(convId: Long) = "$GUEST_DIR/conv_$convId"
 
     /** 环境探活：能写文件到共享目录 = Termux 真的活着 */
     suspend fun probe(context: Context, timeoutMs: Long = 4000): Boolean {
@@ -74,11 +43,51 @@ object MimoRunner {
         return false
     }
 
+    fun parse(text: String): String? {
+        val t = text.trim()
+        if (!t.startsWith("/mimo")) return null
+        val task = t.removePrefix("/mimo").trim()
+            .trimEnd('、', '，', '。', '；', '！', '？', ',', '.', ';', '!', '?')
+        return task.ifBlank { null }
+    }
+
+    /** 生成 ubuntu 内执行的 bash 脚本内容 */
+    fun buildScript(task: String, taskId: Long = 0L, model: String = "", convId: Long = 0L): String {
+        val q = task.replace("'", "'\\''")
+        val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
+        val pidf = "mimo_pid_$taskId"
+        val cid = if (convId != 0L) convId else taskId
+        val work = convDirGuest(cid)
+        val home = "$work/.mimocode"
+        val modelFlag = if (model.isNotBlank()) "--model $model " else ""
+        // -s conv_<id>：同对话续接上下文；MIMOCODE_HOME 与工作区按对话隔离
+        return listOf(
+            "#!/bin/bash",
+            "mkdir -p $work",
+            "cd $work",
+            "export PATH=/root/.mimocode/bin:${'$'}{PATH}",
+            "export MIMOCODE_HOME=$home",
+            "echo START ${'$'}(date +%s) > $GUEST_DIR/$log",
+            "echo PWD=${'$'}(pwd) >> $GUEST_DIR/$log",
+            "echo WORK=$work >> $GUEST_DIR/$log",
+            "timeout 300 $MIMO_BIN run --yolo -s conv_$cid " + modelFlag +
+                "'请把产出文件保存到当前工作目录。任务：$q' < /dev/null 2>&1 | tee -a $GUEST_DIR/$log &",
+            "echo ${'$'}! > $GUEST_DIR/$pidf",
+            "wait",
+            // 收拢产物到该对话的共享目录（也兼容 agent 写到 /root /tmp）
+            "find /root /tmp $work -maxdepth 4 -type f -mmin -20 2>/dev/null | while read f; do case ${'$'}f in *.md|*.txt|*.docx|*.pptx|*.xlsx|*.pdf|*.csv|*.html|*.png|*.jpg) cp -n \"${'$'}f\" $work/ 2>/dev/null ;; esac; done",
+            "echo EXIT_CODE=${'$'}{PIPESTATUS[0]} >> $GUEST_DIR/$log",
+            "echo END ${'$'}(date +%s) >> $GUEST_DIR/$log",
+            "rm -f $GUEST_DIR/$pidf"
+        ).joinToString("\n")
+    }
+
+
     fun logFile(context: Context, taskId: Long): File =
         File(appOutDir(context), "mimo_run_$taskId.log")
 
-    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis(), model: String = ""): Boolean {
-        val script = buildScript(task, taskId, model)
+    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis(), model: String = "", convId: Long = 0L): Boolean {
+        val script = buildScript(task, taskId, model, convId)
         val b64 = Base64.encodeToString(script.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         val scriptName = "mimo_task_$taskId.sh"
         val write = "mkdir -p $HOST_DIR && echo $b64 | base64 -d > $HOST_DIR/$scriptName && chmod +x $HOST_DIR/$scriptName"
@@ -205,7 +214,8 @@ object MimoRunner {
         return TermuxBridge.runInBackground(context, cmd)
     }
 
-    fun appOutDir(context: Context): File = File(HOST_DIR)
+    fun appOutDir(context: Context, convId: Long = 0L): File =
+        if (convId != 0L) File(convDirHost(convId)) else File(HOST_DIR)
 
     fun snapshot(context: Context): Set<String> {
         return appOutDir(context).listFiles()?.map { it.name }?.toSet() ?: emptySet()
@@ -218,10 +228,12 @@ object MimoRunner {
     suspend fun awaitNewFiles(
         context: Context,
         startTimeMs: Long,
+        convId: Long = 0L,
         timeoutMs: Long = 90_000,
         pollMs: Long = 1500
     ): List<File> {
-        val dir = appOutDir(context)
+        val dir = appOutDir(context, convId)
+        dir.mkdirs()
         val ignore = setOf(SCRIPT_NAME, LOG_NAME, ".task_txt", "bridge_log.txt",
             "serve_token.json", "serve_token_new.json", "diag.txt", "diag2.txt", "diag_cmd.sh")
         // 产物优先级：文档 > 图片 > 其它；源码/脚本不当产物
