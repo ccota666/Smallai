@@ -3,4 +3,8 @@
     <cache-path name="camera" path="camera/" />
     <files-path name="attachments" path="attachments/" />
     <cache-path name="cache" path="." />
+    <!-- 产物目录：/sdcard/Download/MiMoChat -->
+    <external-path name="mimo_out" path="Download/MiMoChat" />
+    <external-path name="downloads" path="Download" />
+    <external-path name="ext_root" path="." />
 </paths>

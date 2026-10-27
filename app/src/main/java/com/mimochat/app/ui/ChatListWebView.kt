@@ -406,6 +406,14 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .taskcard .thead{display:flex;align-items:center;gap:8px;
   padding:10px 12px;background:rgba(47,111,237,0.10);
   border-bottom:1px solid $borderC;font-size:13px;font-weight:600;}
+.taskcard.done .thead{background:rgba(39,174,96,0.14);color:#27AE60;}
+.taskcard.err .thead{background:rgba(231,76,60,0.12);color:#E74C3C;}
+.taskcard .spin{display:inline-block;width:12px;height:12px;border-radius:50%;
+  border:2px solid $accent;border-top-color:transparent;
+  animation:sp 0.8s linear infinite;vertical-align:-2px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.taskcard .summary{margin-top:8px;padding-top:8px;border-top:1px dashed $borderC;
+  white-space:pre-wrap;font-size:12.5px;color:$muted;line-height:1.65;}
 .taskcard .tbody{padding:10px 12px;font-size:13px;line-height:1.7;}
 .taskcard .step{margin:3px 0;display:flex;gap:6px;align-items:flex-start;}
 .taskcard .step .ic{flex:0 0 auto;}
@@ -1121,16 +1129,16 @@ function attHtml(a){
 function taskCardHtml(m){
   var c = String(m.content || '');
   var lines = c.split('\n');
-  // 首行是标题/状态
   var title = '智能体任务';
   var bodyLines = lines;
   if (lines.length && lines[0]){ title = lines[0]; bodyLines = lines.slice(1); }
-  var running = /运行中|已下发|执行/.test(c);
-  var ok = /完成|✅/.test(c);
+  var running = /运行中|已下发|执行中/.test(c);
+  var ok = /任务完成|✅/.test(c);
   var err = /❌|中断|失败/.test(c);
-  var cls = ok ? 'status-ok' : (err ? 'status-err' : (running ? 'status-run' : ''));
-  var icon = ok ? '✅' : (err ? '⛔' : '⚙');
-  var h = '<div class="taskcard"><div class="thead"><span>' + icon + '</span>'
+  var cls = ok ? 'done' : (err ? 'err' : (running ? 'running' : ''));
+  // 头部图标：运行中转圈，结束打勾/打叉
+  var icon = running ? '<span class="spin"></span>' : (ok ? '✅' : (err ? '⛔' : '⚙'));
+  var h = '<div class="taskcard ' + cls + '"><div class="thead">' + icon
     + '<span>' + esc(title) + '</span></div><div class="tbody">';
   bodyLines.forEach(function(ln){
     if (!String(ln).trim()) return;
@@ -1181,7 +1189,7 @@ function msgHtml(m){
     }
     h += '</div></details>';
   }
-  if (!isUser && !m.pending && m.content){
+  if (!isUser && !m.pending && m.content && !m.task){
     h += '<div class="actions">'
       + '<button class="act" title="复制" onclick="Android.onAction(&quot;copy&quot;,' + m.id + ')">'+ICONS.copy+'</button>'
       + '<button class="act" title="重新生成" onclick="askConfirm(&quot;重新生成将覆盖当前回答？&quot;,function(){Android.onAction(&quot;regen&quot;,' + m.id + ')})">'+ICONS.refresh+'</button>'

@@ -107,6 +107,23 @@ object MimoRunner {
         return t.contains("START ") && !t.contains("END ") && !t.contains("EXIT_CODE")
     }
 
+    /** 提取日志结尾的「人话总结」：最后一个 ANSI 块之后到 EXIT_CODE 之前 */
+    fun extractSummary(logText: String): String {
+        val cleaned = logText.replace(Regex("\\x1B\\[[0-9;]*m"), "")
+        val exitIdx = cleaned.lastIndexOf("EXIT_CODE=")
+        val body = if (exitIdx > 0) cleaned.substring(0, exitIdx) else cleaned
+        // 取最后一段：以空行分隔，找最后一个较长的自然语言段
+        val paras = body.split(Regex("\\n\\s*\\n"))
+        for (p in paras.reversed()) {
+            val t = p.trim()
+            // 末段通常是总结（含中文/文件名等），排除命令行回显
+            if (t.length > 30 && !t.startsWith("$ ") && !t.startsWith("from ") && !t.startsWith("python")) {
+                return t.take(800)
+            }
+        }
+        return body.trim().takeLast(400)
+    }
+
     /** 中断当前 mimo 任务 */
     fun cancel(context: Context): Boolean {
         val cmd = "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- " +

@@ -622,7 +622,13 @@ fun ChatScreen(
                                         )
                                     }
                                 )
-                                vm.updateLocalTask(aiId, "✅ 任务完成，生成 ${files.size} 个文件：$names", attJson)
+                                val summary = com.mimochat.app.ui.termux.MimoRunner.extractSummary(log)
+                                val tail = if (summary.isBlank()) "" else "\n---\n$summary"
+                                vm.updateLocalTask(
+                                    aiId,
+                                    "✅ 任务完成，生成 ${files.size} 个文件：$names$tail",
+                                    attJson
+                                )
                             } else if (com.mimochat.app.ui.termux.MimoRunner.isInterrupted(log)) {
                                 vm.updateLocalTask(aiId, "⏹ 任务中断")
                             } else {
@@ -1378,12 +1384,24 @@ private fun InputBar(
                 ) {
                     AppIconButton(onClick = onPickFile, icon = Icons.Rounded.Add, contentDescription = "添加文件")
                     AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
-                    AppIconButton(
+                    // 胶囊按钮：智能体 / 退出
+                    TextButton(
                         onClick = onToggleAgent,
-                        icon = Icons.Rounded.SmartToy,
-                        contentDescription = "智能体模式",
-                        tint = if (agentMode) Color(0xFF2F6FED) else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 10.dp, vertical = 2.dp
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (agentMode) Color(0xFF2F6FED) else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                    ) {
+                        Text(
+                            if (agentMode) "智能体" else "智能体",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (agentMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(Modifier.weight(1f))
                     AppIconButton(
                         onClick = onVoiceInput,
