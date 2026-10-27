@@ -78,7 +78,7 @@ object AgentTaskManager {
                     // 其余色码去掉，避免污染文本
                     val marked = log.replace(Regex("\\x1B\\[0m"), "\n<SEG>\n")
                         .replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
-                    val tail = marked.lines().filter { it.isNotBlank() }.takeLast(120)
+                    val tail = marked.lines().filter { it.isNotBlank() }.takeLast(200)
                     val live = "⏳ 运行中\n" + tail.joinToString("\n")
                     publish(taskId, convId, live, true)
                     onMessage(live, null)   // 关键：实时写回消息，卡片才动
@@ -100,12 +100,12 @@ object AgentTaskManager {
                 "生成 ${files.size} 个文件：" + files.joinToString("、") { it.name }
             else if (done) "无产物文件"
             else ""
+            // 全量日志：最后 [0m] 到 EXIT_CODE=0 也保留
             val markedLog = log.replace(Regex("\\x1B\\[0m"), "\n<SEG>\n")
                 .replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
-            val logBody = markedLog.lines().filter { it.isNotBlank() }.takeLast(120).joinToString("\n")
             val body = buildString {
                 append(title).append('\n')
-                append(logBody)
+                append(markedLog.trim())
                 if (filesLine.isNotBlank()) append("\n<FILES>").append(filesLine).append("</FILES>")
             }
             val attJson = if (files.isNotEmpty()) {

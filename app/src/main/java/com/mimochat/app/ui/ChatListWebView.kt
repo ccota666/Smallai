@@ -416,7 +416,13 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   color:var(--ac);line-height:1.5;}
 .taskcard .sec-out{margin:0 0 6px 2px;font-size:11.5px;color:$muted;
   white-space:pre-wrap;line-height:1.6;max-height:10em;overflow:hidden;}
-.taskcard .log-tip{margin:8px 0 2px;font-size:12.5px;line-height:1.65;color:$fg;}
+.taskcard .log-fold{margin:3px 0;}
+.taskcard .log-fold summary{cursor:pointer;font-size:11px;color:$muted;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:2px 0;}
+.taskcard .log-fold pre{margin:2px 0 6px;padding:6px 8px;background:$codeBg;
+  border-radius:6px;font-size:10.5px;line-height:1.5;white-space:pre-wrap;}
+.taskcard .log-tip{margin:10px 0 6px;font-size:13.5px;line-height:1.7;color:$fg;}
 .taskcard .log-cmd{margin:3px 0 3px 2px;font-size:11px;color:$accent;
   font-family:ui-monospace,Consolas,monospace;opacity:.9;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1177,43 +1183,38 @@ function taskCardHtml(m){
     t = String(t).replace(/\s+/g, ' ').trim();
     return t.length > 160 ? t.slice(0, 160) + '…' : t;
   }
+  var foldId = 0;
   parts.forEach(function(seg){
     var t = seg.replace(/^\n+/, '').replace(/\n+$/, '');
     if (!t.trim()) return;
+    // 去掉我们自己写的标题行
+    t = t.replace(/^\s*(任务完成|任务中断|超时未完成|⏳ 运行中|⏳ 任务已下发[^\n]*)\s*/, '').trim();
+    if (!t) return;
     var lines = t.split('\n').filter(function(x){ return String(x).trim(); });
-    if (!lines.length) return;
-    var first = lines[0];
-    var f = first.trim();
-    // 命令
-    if (f.indexOf('$') === 0){
-      h += '<div class="log-cmd">▸ ' + esc(oneLine(f.replace(/^\$ ?/, ''))) + '</div>';
-      return;
-    }
-    // 写入 / 技能
-    if (f.indexOf('←') >= 0 || /Write|写入|Creating/.test(f)){
-      h += '<div class="log-min">← ' + esc(oneLine(f.replace(/^.*←\s*/, ''))) + '</div>';
-      return;
-    }
-    if (f.indexOf('→') >= 0 || /skill|技能/.test(f)){
-      h += '<div class="log-min">→ ' + esc(oneLine(f)) + '</div>';
-      return;
-    }
-    // 提示语：自然语言，正常显示
-    var isProse = /[。！？\u4e00-\u9fa5]/.test(f) && f.length > 6
-      && !/^[A-Za-z_]+ = /.test(f) && f.indexOf('EXIT_CODE') < 0
-      && f.indexOf('START ') < 0 && f.indexOf('END ') < 0;
+    var f = lines[0].trim();
+    // 命令/写入/技能/普通输出 → 小字折叠（默认一行，可展开）
+    var isCmd = f.indexOf('$') === 0;
+    var isWrite = f.indexOf('←') >= 0 || /Write|写入|Creating/.test(f);
+    var isSkill = f.indexOf('→') >= 0;
+    var isProse = !isCmd && !isWrite && !isSkill
+      && (/[。！？\u4e00-\u9fa5]/.test(f) || /^[A-Z][a-z]+ /.test(f))
+      && f.indexOf('EXIT_CODE') < 0 && f.indexOf('START ') < 0 && f.indexOf('END ') < 0;
     if (isProse){
-      h += '<div class="log-tip">' + esc(f) + '</div>';
+      // [0m] 之后的提示语：大字全量显示
+      h += '<div class="log-tip">' + esc(t) + '</div>';
       return;
     }
-    // 其余输出：最多 6 行小字，保留更多信息
-    var shown = lines.slice(0, 6).map(oneLine);
-    if (lines.length > 6) shown.push('…');
-    shown.forEach(function(l){
-      h += '<div class="log-min">' + esc(l) + '</div>';
-    });
+    // 其他：一行小字 + 可展开
+    var label = isCmd ? ('▸ ' + f.replace(/^\$ ?/, ''))
+      : isWrite ? ('← ' + f.replace(/^.*←\s*/, ''))
+      : isSkill ? ('→ ' + f)
+      : f;
+    label = label.replace(/\s+/g, ' ').trim();
+    if (label.length > 120) label = label.slice(0, 120) + '…';
+    var id = 'lf' + (foldId++);
+    h += '<details class="log-fold"><summary>' + esc(label) + '</summary>'
+      + '<pre>' + esc(t) + '</pre></details>';
   });
-
   // 完整日志可展开（兜底，保证不丢）
   var fullLog = c.replace(/<SEG>/g, '\n').replace(/<FILES>[\s\S]*?<\/FILES>/g, '')
     .replace(/^\s*任务完成\s*/, '').replace(/^\s*任务中断\s*/, '').replace(/^\s*超时未完成\s*/, '');
