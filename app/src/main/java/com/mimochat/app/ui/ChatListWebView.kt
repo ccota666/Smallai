@@ -422,6 +422,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .taskcard .log-min{margin:2px 0 2px 2px;font-size:11px;color:$muted;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.75;}
+.taskcard .filebar{margin-top:10px;padding-top:8px;
+  border-top:1px solid $borderC;font-size:11.5px;color:$muted;}
+.taskcard .filebar .fb-text{margin-bottom:4px;line-height:1.5;}
 .taskcard .summary{margin-top:8px;padding-top:8px;border-top:1px dashed $borderC;
   white-space:pre-wrap;font-size:12.5px;color:$muted;line-height:1.65;}
 .taskcard .tbody{padding:10px 12px;font-size:13px;line-height:1.7;}
@@ -1142,14 +1145,15 @@ function taskCardHtml(m){
   var title = '智能体任务';
   var bodyLines = lines;
   if (lines.length && lines[0]){ title = lines[0]; bodyLines = lines.slice(1); }
-  var running = /运行中|已下发|执行中/.test(c);
-  var ok = /任务完成|✅/.test(c);
-  var err = /❌|中断|失败/.test(c);
+  var running = /运行中|已下发|执行中|检测/.test(c);
+  var ok = /任务完成|^完成/.test(c);
+  var err = /任务中断|超时|失败|❌/.test(c);
   var cls = ok ? 'done' : (err ? 'err' : (running ? 'running' : ''));
-  // 头部图标：运行中转圈，结束打勾/打叉
+  // 头部只留一个状态图标；标题纯文字，不重复 emoji
   var icon = running ? '<span class="spin"></span>' : (ok ? '✅' : (err ? '⛔' : '⚙'));
+  var t = title.replace(/^\s*[✅⚠️⚙️⏱⏳]+\s*/, '');
   var h = '<div class="taskcard ' + cls + '"><div class="thead">' + icon
-    + '<span>' + esc(title) + '</span></div><div class="tbody">';
+    + '<span>' + esc(t || '智能体任务') + '</span></div><div class="tbody">';
   // 日志解析（按用户确认的规则）：
   //   [0m]   + 文字  = 提示语 → 正常显示
   //   [0m]$  + cmd   = 执行命令 → 一行小字
@@ -1158,6 +1162,8 @@ function taskCardHtml(m){
   //   其余输出         = 一行小字 + 省略号
   // 直到 EXIT_CODE=0
   var raw = c;
+  // 抽出底部文件栏，不进日志区
+  raw = raw.replace(/<FILES>[\s\S]*?<\/FILES>/g, '');
   var exitIdx = raw.lastIndexOf('EXIT_CODE=');
   if (exitIdx > 0) raw = raw.slice(0, exitIdx);
   // 用显式 <SEG> 切段（Kotlin 侧把 ANSI reset 转成它，避免 ESC 丢失）
@@ -1199,9 +1205,17 @@ function taskCardHtml(m){
     // 其余输出：一行小字
     h += '<div class="log-min">' + esc(oneLine(lines.join(' · '))) + '</div>';
   });
-  if (m.attachments && m.attachments.length){
-    h += '<div class="att-row" style="margin-top:8px">';
-    for (var i=0;i<m.attachments.length;i++) h += attHtml(m.attachments[i]);
+  // 底部文件栏（在日志之后）
+  var fm = raw.match(/<FILES>([\s\S]*?)<\/FILES>/);
+  var fileList = fm ? fm[1].trim() : '';
+  if (fileList || (m.attachments && m.attachments.length)){
+    h += '<div class="filebar">';
+    if (fileList) h += '<div class="fb-text">' + esc(fileList) + '</div>';
+    if (m.attachments && m.attachments.length){
+      h += '<div class="att-row">';
+      for (var i=0;i<m.attachments.length;i++) h += attHtml(m.attachments[i]);
+      h += '</div>';
+    }
     h += '</div>';
   }
   h += '</div></div>';

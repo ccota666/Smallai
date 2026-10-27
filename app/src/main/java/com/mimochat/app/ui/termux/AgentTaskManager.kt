@@ -79,21 +79,22 @@ object AgentTaskManager {
                     val marked = log.replace(Regex("\\x1B\\[0m"), "\n<SEG>\n")
                         .replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
                     val tail = marked.lines().filter { it.isNotBlank() }.takeLast(120)
-                    publish(taskId, convId, "⏳ 运行中\n" + tail.joinToString("\n"), true)
+                    val live = "⏳ 运行中\n" + tail.joinToString("\n")
+                    publish(taskId, convId, live, true)
+                    onMessage(live, null)   // 关键：实时写回消息，卡片才动
                 }
                 if (log.contains("END ") || log.contains("EXIT_CODE=")) break
             }
             val log = runCatching { logFile.readText() }.getOrDefault("")
             val files = MimoRunner.awaitNewFiles(appCtx, startTime, timeoutMs = 5_000, pollMs = 500)
             val summary = MimoRunner.extractSummary(log)
+            val filesLine = if (files.isNotEmpty())
+                "生成 ${files.size} 个文件：" + files.joinToString("、") { it.name }
+            else "未检测到产物"
             val body = when {
-                files.isNotEmpty() -> {
-                    val names = files.joinToString { it.name }
-                    "✅ 任务完成，生成 ${files.size} 个文件：$names" +
-                        (if (summary.isBlank()) "" else "\n---\n$summary")
-                }
-                MimoRunner.isInterrupted(log) -> "⏹ 任务中断"
-                else -> "⏳ 超时未检测到产物\n${summary.take(400)}"
+                files.isNotEmpty() -> "任务完成\n<FILES>$filesLine</FILES>\n" + summary
+                MimoRunner.isInterrupted(log) -> "任务中断\n${summary.take(300)}"
+                else -> "超时未完成\n${summary.take(300)}"
             }
             val attJson = if (files.isNotEmpty()) {
                 com.mimochat.app.data.ChatRepository.attachmentsToJson(
