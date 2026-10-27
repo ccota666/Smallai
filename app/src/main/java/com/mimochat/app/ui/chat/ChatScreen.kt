@@ -64,6 +64,7 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -136,6 +137,7 @@ import com.mimochat.app.ui.FullscreenDialog
 import com.mimochat.app.ui.LocalChatListScrolling
 import com.mimochat.app.ui.MarkdownText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -234,6 +236,8 @@ fun ChatScreen(
     var inputAreaHeight by remember { mutableIntStateOf(0) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val voiceRecorder = remember { com.mimochat.app.ui.VoiceRecorder(context) }
+    var agentMode by remember { mutableStateOf(false) }
+    var agentRunning by remember { mutableStateOf(false) }
     var voiceRecording by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         onDispose { voiceRecorder.cancel() }
@@ -478,6 +482,9 @@ fun ChatScreen(
                 onEditImage = { path -> editingImagePath = path },
                 onPickFile = { fileLauncher.launch(arrayOf("*/*")) },
                 voiceRecording = voiceRecording,
+                agentMode = agentMode,
+                agentRunning = agentRunning,
+                onToggleAgent = { agentMode = !agentMode },
                 modelsCsv = settings.models,
                 onVoiceInput = {
                     if (voiceRecording) {
@@ -533,15 +540,79 @@ fun ChatScreen(
                     }
                 },
                 onSend = {
+                    val taskText = inputText.trim()
+                    if (agentMode && taskText.isNotEmpty() && !agentRunning) {
+                        inputText = ""
+                        attachments = emptyList()
+                        agentRunning = true
+                        val startTime = System.currentTimeMillis()
+                        scope.launch {
+                            val aiId = vm.insertLocalTask("⏳ 任务已下发，正在执行…")
+                            val ok = com.mimochat.app.ui.termux.MimoRunner.start(context, taskText)
+                            if (!ok) {
+                                agentRunning = false
+                                vm.updateLocalTask(aiId, "❌ 无法启动任务（Termux 不可用）")
+                                return@launch
+                            }
+                            val steps = mutableListOf<String>()
+                            val statusJob = launch {
+                                repeat(90) {
+                                    delay(2500)
+                                    val log = runCatching {
+                                        java.io.File("/storage/emulated/0/Download/MiMoChat/mimo_run.log").readText()
+                                    }.getOrDefault("")
+                                    log.lines().forEach { ln ->
+                                        val step = com.mimochat.app.ui.termux.MimoRunner.parseLogLine(ln)
+                                        if (step != null && steps.lastOrNull() != step) steps.add(step)
+                                    }
+                                    if (steps.isNotEmpty()) {
+                                        vm.updateLocalTask(aiId, "⏳ 运行中\n" + steps.takeLast(3).joinToString("\n"))
+                                    }
+                                }
+                            }
+                            val files = com.mimochat.app.ui.termux.MimoRunner.awaitNewFiles(
+                                context, startTime, timeoutMs = 180_000
+                            )
+                            statusJob.cancel()
+                            agentRunning = false
+                            val log = runCatching {
+                                java.io.File("/storage/emulated/0/Download/MiMoChat/mimo_run.log").readText()
+                            }.getOrDefault("")
+                            if (files.isNotEmpty()) {
+                                val names = files.joinToString { it.name }
+                                val attJson = com.mimochat.app.data.ChatRepository.attachmentsToJson(
+                                    files.map { f ->
+                                        com.mimochat.app.data.Attachment(
+                                            type = if (f.extension.lowercase() in setOf("png","jpg","jpeg","webp")) "image"
+                                                   else if (f.extension.lowercase() in setOf("md","txt","csv","json")) "text"
+                                                   else "file",
+                                            path = f.absolutePath, name = f.name
+                                        )
+                                    }
+                                )
+                                vm.updateLocalTask(aiId, "✅ 任务完成，生成 ${files.size} 个文件：$names", attJson)
+                            } else if (com.mimochat.app.ui.termux.MimoRunner.isInterrupted(log)) {
+                                vm.updateLocalTask(aiId, "⏹ 任务中断")
+                            } else {
+                                vm.updateLocalTask(aiId, "⏳ 超时未检测到产物，可去 下载/MiMoChat 查看")
+                            }
+                        }
+                    } else {
                     vm.send(inputText, attachments)
                     inputText = ""
                     attachments = emptyList()
-                    // 用户提问后恢复跟随流式输出
                     followBottom = true
                     webViewScrollToBottom = System.currentTimeMillis()
+                    }
                 },
                 generating = generating,
-                onStop = { vm.stop() }
+                onStop = {
+                    if (agentRunning) {
+                        com.mimochat.app.ui.termux.MimoRunner.cancel(context)
+                        agentRunning = false
+                    }
+                    vm.stop()
+                }
             )
                 } // Column
             } // overlay Box
@@ -1143,6 +1214,9 @@ private fun InputBar(
     onTakePhoto: () -> Unit = {},
     onVoiceInput: () -> Unit = {},
     voiceRecording: Boolean = false,
+    agentMode: Boolean = false,
+    agentRunning: Boolean = false,
+    onToggleAgent: () -> Unit = {},
     modelsCsv: String = "",
     onSend: () -> Unit,
     generating: Boolean,
@@ -1251,7 +1325,7 @@ private fun InputBar(
                         tint = if (voiceRecording) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.primary
                     )
-                    if (generating) {
+                    if (generating || agentRunning) {
                         AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
                     } else {
                         AppFilledIconButton(
@@ -1272,6 +1346,12 @@ private fun InputBar(
                 ) {
                     AppIconButton(onClick = onPickFile, icon = Icons.Rounded.Add, contentDescription = "添加文件")
                     AppIconButton(onClick = onTakePhoto, icon = Icons.Rounded.CameraAlt, contentDescription = "拍照")
+                    AppIconButton(
+                        onClick = onToggleAgent,
+                        icon = Icons.Rounded.SmartToy,
+                        contentDescription = "智能体模式",
+                        tint = if (agentMode) Color(0xFF2F6FED) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.weight(1f))
                     AppIconButton(
                         onClick = onVoiceInput,
@@ -1280,7 +1360,7 @@ private fun InputBar(
                         tint = if (voiceRecording) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.primary
                     )
-                    if (generating) {
+                    if (generating || agentRunning) {
                         AppStopIconButton(onClick = onStop, modifier = Modifier.padding(2.dp))
                     } else {
                         AppFilledIconButton(

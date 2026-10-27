@@ -23,6 +23,18 @@ class ChatRepository(
 
     fun cancelGeneration() = api.cancel()
 
+    suspend fun insertLocalMessage(convId: Long, role: String, content: String, attachmentsJson: String = ""): Long {
+        return db.messageDao().insert(
+            ChatMessage(conversationId = convId, role = role, content = content,
+                attachmentsJson = attachmentsJson, createdAt = System.currentTimeMillis())
+        )
+    }
+
+    suspend fun updateMessageContent(id: Long, content: String, attachmentsJson: String? = null) {
+        val m = db.messageDao().getById(id) ?: return
+        db.messageDao().update(m.copy(content = content, attachmentsJson = attachmentsJson ?: m.attachmentsJson))
+    }
+
     /** 打开会话时把残留 pending 落盘，避免一直「正在思考」 */
     suspend fun clearStalePending(convId: Long) {
         val pendings = db.messageDao().getByConversation(convId).filter { it.pending }

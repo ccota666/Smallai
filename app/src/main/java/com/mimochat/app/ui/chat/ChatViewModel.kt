@@ -22,7 +22,6 @@ class ChatViewModel(
     private val settingsRepo: SettingsRepository
 ) : ViewModel() {
 
-    private var conversationId: Long = -1L
 
     private val _conversation = MutableStateFlow<Conversation?>(null)
     val conversation = _conversation.asStateFlow()
@@ -62,7 +61,17 @@ class ChatViewModel(
     private val reasoningSb = StringBuilder()
     private var lastPublishAt = 0L
 
+    var conversationId: Long = -1L
+        private set
+
+    suspend fun insertLocalTask(content: String): Long =
+        repo.insertLocalMessage(conversationId, "assistant", content)
+
+    suspend fun updateLocalTask(id: Long, content: String, attachmentsJson: String? = null) =
+        repo.updateMessageContent(id, content, attachmentsJson)
+
     fun init(convId: Long) {
+        conversationId = convId
         viewModelScope.launch { runCatching { repo.clearStalePending(convId) } }
         if (conversationId == convId) return
         conversationId = convId
