@@ -157,6 +157,32 @@ fun ChatListWebView(
                     }
 
                     @JavascriptInterface
+                    fun openFile(path: String) {
+                        try {
+                            val f = java.io.File(path)
+                            if (!f.exists()) {
+                                android.widget.Toast.makeText(ctx, "文件不存在", android.widget.Toast.LENGTH_SHORT).show()
+                                return
+                            }
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                ctx, ctx.packageName + ".fileprovider", f
+                            )
+                            val mime = ctx.contentResolver.getType(uri)
+                                ?: android.webkit.MimeTypeMap.getSingleton()
+                                    .getMimeTypeFromExtension(f.extension.lowercase())
+                                ?: "*/*"
+                            val i = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, mime)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            ctx.startActivity(i)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(ctx, "无法打开：\${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    @JavascriptInterface
                     fun copyText(text: String) {
                         (ctx as? Activity)?.runOnUiThread {
                             val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
@@ -359,6 +385,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .cites .c{font-size:12px;color:$muted;margin:3px 0;cursor:pointer;}
 .cites .c .title{color:var(--ac);}
 .att-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+.att-click{cursor:pointer;}
 .att{display:flex;flex-direction:column;align-items:center;width:76px;}
 .att img{width:64px;height:64px;object-fit:cover;border-radius:10px;}
 .att .tag{font-size:10px;color:inherit;opacity:.75;margin-top:2px;}
@@ -1080,10 +1107,12 @@ function shortName(name){
 function attHtml(a){
   var tag = a.type === 'image' ? '图片' : (a.type === 'text' ? '文本' : '文件');
   var name = esc(shortName(a.name));
+  var path = esc(a.path || '');
+  var oc = path ? ' onclick="Android.openFile(&quot;' + path + '&quot;)"' : '';
   if (a.type === 'image' && a.path)
-    return '<div class="att"><img src="file://' + esc(a.path) + '"/>'
+    return '<div class="att att-click"' + oc + '><img src="file://' + path + '"/>'
       + '<div class="tag">' + tag + '</div><div class="name">' + name + '</div></div>';
-  return '<div class="att"><div style="width:64px;height:64px;border-radius:10px;'
+  return '<div class="att att-click"' + oc + '><div style="width:64px;height:64px;border-radius:10px;'
     + 'background:rgba(128,128,128,0.18);display:flex;align-items:center;'
     + 'justify-content:center;font-size:12px;">' + tag + '</div>'
     + '<div class="name">' + name + '</div></div>';
@@ -1120,7 +1149,8 @@ function msgHtml(m){
   var isUser = m.role === 'user';
   var h = '<div class="msg ' + (isUser ? 'user' : 'ai') + '" id="msg-' + m.id + '">';
   h += '<div class="bubble">';
-  if (m.attachments && m.attachments.length){
+  // 任务卡自带产物，这里跳过，避免卡片前多一份
+  if (m.attachments && m.attachments.length && !m.task){
     if (m.attachments.length > 1)
       h += '<div style="font-size:11px;opacity:.75;margin-bottom:4px">共 '
         + m.attachments.length + ' 个附件</div>';
