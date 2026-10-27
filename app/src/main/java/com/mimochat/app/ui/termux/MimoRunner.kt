@@ -63,17 +63,17 @@ object MimoRunner {
             "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- /bin/bash $HOST_DIR/$SCRIPT_NAME && " +
             "echo WRAP_OK >> $HOST_DIR/bridge_log.txt || echo WRAP_FAIL >> $HOST_DIR/bridge_log.txt"
         TermuxBridge.writeLog(context, "MIMO-SETUP(len=${b64.length}): ok")
-        val ok1 = TermuxBridge.wakeThenRun(context, write)  // 先唤醒 Termux
+        // 不自动唤醒 Termux：直接后台命令，失败由调用方提示用户检查 Termux
+        val ok1 = TermuxBridge.runInBackground(context, write)
         if (!ok1) {
             TermuxBridge.writeLog(context, "MIMO-SETUP FAIL")
             return false
         }
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             TermuxBridge.runInBackground(context, "sleep 1 && $run")
-        }, 2500)
-        val ok2 = true
-        TermuxBridge.writeLog(context, "MIMO-RUN -> $ok2")
-        return ok2
+        }, 800)
+        TermuxBridge.writeLog(context, "MIMO-RUN dispatched")
+        return true
     }
 
     /** 把 mimo_run.log 的一行翻译成人话 */

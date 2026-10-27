@@ -484,7 +484,18 @@ fun ChatScreen(
                 voiceRecording = voiceRecording,
                 agentMode = agentMode,
                 agentRunning = agentRunning,
-                onToggleAgent = { agentMode = !agentMode },
+                onToggleAgent = {
+                    if (!agentMode) {
+                        if (!com.mimochat.app.ui.termux.TermuxBridge.isTermuxInstalled(context)) {
+                            Toast.makeText(context, "未检测到 Termux，请先安装并在 Termux 设置里允许外部应用", Toast.LENGTH_LONG).show()
+                        } else {
+                            agentMode = true
+                            Toast.makeText(context, "智能体模式已开启，发送即执行任务", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        agentMode = false
+                    }
+                },
                 modelsCsv = settings.models,
                 onVoiceInput = {
                     if (voiceRecording) {
@@ -553,7 +564,8 @@ fun ChatScreen(
                             val ok = com.mimochat.app.ui.termux.MimoRunner.start(context, taskText)
                             if (!ok) {
                                 agentRunning = false
-                                vm.updateLocalTask(aiId, "❌ 无法启动任务（Termux 不可用）")
+                                vm.updateLocalTask(aiId, "❌ 无法启动任务：请检查 Termux 是否安装、已打开，且设置中允许「外部应用」")
+                                Toast.makeText(context, "请检查 Termux 是否安装/已打开", Toast.LENGTH_LONG).show()
                                 return@launch
                             }
                             val steps = mutableListOf<String>()
