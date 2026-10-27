@@ -2,7 +2,10 @@ package com.mimochat.app.ui.conversations
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -79,6 +82,8 @@ fun ConversationListScreen(
     })
     val conversations by vm.conversations.collectAsState(initial = emptyList())
     val previews by vm.previews.collectAsState(initial = emptyList())
+    val runningConvs by com.mimochat.app.ui.termux.AgentTaskManager.runningConvIds.collectAsState()
+    val doneAt by com.mimochat.app.ui.termux.AgentTaskManager.doneAt.collectAsState()
     val scope = rememberCoroutineScope()
     // 对话列表：系统返回 = 回到最近打开的对话，而不是退出 App
     BackHandler { onBackToChat() }
@@ -224,6 +229,8 @@ fun ConversationListScreen(
                     items(conversations, key = { it.id }, contentType = { "conv" }) { conv ->
                         ConversationItem(
                             conv = conv,
+                            runningConvs = runningConvs,
+                            doneAt = doneAt,
                             previewQuestion = { id -> firstUserMap[id] },
                             previewAnswer = { id -> firstAiMap[id] },
                             selected = conv.id in selected,
@@ -330,6 +337,8 @@ private fun SearchResultItem(hit: SearchHit, onClick: () -> Unit) {
 @Composable
 private fun ConversationItem(
     conv: Conversation,
+    runningConvs: Set<Long>,
+    doneAt: Map<Long, Long>,
     previewQuestion: (Long) -> String?,
     previewAnswer: (Long) -> String?,
     selected: Boolean,
@@ -380,7 +389,20 @@ private fun ConversationItem(
                     )
                 }
             }
-            // 不显示时间日期
+            // 任务状态指示
+            if (conv.id in runningConvs) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else if (doneAt.containsKey(conv.id)) {
+                Box(
+                    Modifier
+                        .size(10.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color(0xFF2F6FED))
+                )
+            }
         }
     }
 }

@@ -570,67 +570,25 @@ fun ChatScreen(
                 },
                 onSend = {
                     val taskText = inputText.trim()
-                    if (agentMode && taskText.isNotEmpty() && !agentRunning) {
+                    if (agentMode && taskText.isNotEmpty()) {
                         inputText = ""
                         attachments = emptyList()
                         agentRunning = true
-                        val startTime = System.currentTimeMillis()
+                        val taskId = System.currentTimeMillis()
+                        val conv = vm.conversationId
                         scope.launch {
-                            // 用户消息先入库（否则文字像凭空消失）
-                            vm.insertLocalMessage(vm.conversationId, "user", taskText)
                             val aiId = vm.insertLocalTask("⏳ 任务已下发，正在执行…")
-                            val ok = com.mimochat.app.ui.termux.MimoRunner.start(context, taskText)
-                            if (!ok) {
-                                agentRunning = false
-                                vm.updateLocalTask(aiId, "❌ 无法启动任务：请检查 Termux 是否安装、已打开，且设置中允许「外部应用」")
-                                Toast.makeText(context, "请检查 Termux 是否安装/已打开", Toast.LENGTH_LONG).show()
-                                return@launch
+                            com.mimochat.app.ui.termux.AgentTaskManager.start(
+                                context, conv, taskId, taskText
+                            ) { text, attJson ->
+                                vm.updateLocalTask(aiId, text, attJson)
                             }
-                            val statusJob = launch {
-                                repeat(90) {
-                                    delay(2500)
-                                    val log = runCatching {
-                                        java.io.File("/storage/emulated/0/Download/MiMoChat/mimo_run.log").readText()
-                                    }.getOrDefault("")
-                                    if (log.isNotBlank()) {
-                                        // 原样喂日志尾部，由 JS 按「提示语 / 命令 / 输出」分组
-                                        val cleaned = log.replace(Regex("\\x1B\\[[0-9;]*m"), "")
-                                        val tail = cleaned.lines().filter { it.isNotBlank() }.takeLast(50)
-                                        vm.updateLocalTask(aiId, "⏳ 运行中\n" + tail.joinToString("\n"))
-                                    }
+                            // 等任务结束（切页面也不影响，Manager 是全局的）
+                            com.mimochat.app.ui.termux.AgentTaskManager.states.collect { map ->
+                                val st = map[taskId]
+                                if (st != null && !st.running) {
+                                    agentRunning = false
                                 }
-                            }
-                            val files = com.mimochat.app.ui.termux.MimoRunner.awaitNewFiles(
-                                context, startTime, timeoutMs = 180_000
-                            )
-                            statusJob.cancel()
-                            agentRunning = false
-                            val log = runCatching {
-                                java.io.File("/storage/emulated/0/Download/MiMoChat/mimo_run.log").readText()
-                            }.getOrDefault("")
-                            if (files.isNotEmpty()) {
-                                val names = files.joinToString { it.name }
-                                val attJson = com.mimochat.app.data.ChatRepository.attachmentsToJson(
-                                    files.map { f ->
-                                        com.mimochat.app.data.Attachment(
-                                            type = if (f.extension.lowercase() in setOf("png","jpg","jpeg","webp")) "image"
-                                                   else if (f.extension.lowercase() in setOf("md","txt","csv","json")) "text"
-                                                   else "file",
-                                            path = f.absolutePath, name = f.name
-                                        )
-                                    }
-                                )
-                                val summary = com.mimochat.app.ui.termux.MimoRunner.extractSummary(log)
-                                val tail = if (summary.isBlank()) "" else "\n---\n$summary"
-                                vm.updateLocalTask(
-                                    aiId,
-                                    "✅ 任务完成，生成 ${files.size} 个文件：$names$tail",
-                                    attJson
-                                )
-                            } else if (com.mimochat.app.ui.termux.MimoRunner.isInterrupted(log)) {
-                                vm.updateLocalTask(aiId, "⏹ 任务中断")
-                            } else {
-                                vm.updateLocalTask(aiId, "⏳ 超时未检测到产物，可去 下载/MiMoChat 查看")
                             }
                         }
                     } else {

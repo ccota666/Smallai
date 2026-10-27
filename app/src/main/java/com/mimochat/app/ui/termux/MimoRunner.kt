@@ -18,7 +18,7 @@ object MimoRunner {
     const val HOST_DIR = "/storage/emulated/0/Download/MiMoChat"
     /** proot Ubuntu 内路径（通过 --bind /storage/emulated/0:/sdcard 映射） */
     const val GUEST_DIR = "/sdcard/Download/MiMoChat"
-    private const val SCRIPT_NAME = "mimo_task.sh"
+    private const val SCRIPT_NAME = "mimo_task.sh" // 兼容旧名
     private const val LOG_NAME = "mimo_run.log"
     private const val MIMO_BIN = "/root/.mimocode/bin/mimo"
 
@@ -32,35 +32,34 @@ object MimoRunner {
     }
 
     /** 生成 ubuntu 内执行的 bash 脚本内容 */
-    fun buildScript(task: String): String {
+    fun buildScript(task: String, taskId: Long = 0L): String {
         val q = task.replace("'", "'\\''")
+        val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
         return listOf(
             "#!/bin/bash",
             "cd $GUEST_DIR",
-            "export PATH=/root/.mimocode/bin:\${PATH}",
-            "echo START \$(date +%s) > $LOG_NAME",
+            "export PATH=/root/.mimocode/bin:${'$'}{PATH}",
+            "echo START ${'$'}(date +%s) > $log",
             "echo IN_UBUNTU_OK >> /sdcard/Download/MiMoChat/bridge_log.txt",
-            "echo TASK_DIR=/sdcard/Download/MiMoChat >> $LOG_NAME",
-            // 清掉可能挂着的旧进程，避免锁死；stdin 给 /dev/null；限 180s
-            "pkill -f 'mimo run' 2>/dev/null || true",
-            "timeout 180 $MIMO_BIN run --yolo '请务必在 /sdcard/Download/MiMoChat 目录下完成，所有文件写入该绝对路径。任务：$q' < /dev/null 2>&1 | tee -a $LOG_NAME",
-            "echo EXIT_CODE=\${PIPESTATUS[0]} >> $LOG_NAME",
-            "echo END \$(date +%s) >> $LOG_NAME"
+            "echo TASK_DIR=/sdcard/Download/MiMoChat >> $log",
+            // 并发安全：不 pkill 全局 mimo run；每任务独立 log
+            "timeout 300 $MIMO_BIN run --yolo '任务必须在 /sdcard/Download/MiMoChat 目录下完成，所有文件写入该绝对路径。任务：$q' < /dev/null 2>&1 | tee -a $log",
+            "echo EXIT_CODE=${'$'}{PIPESTATUS[0]} >> $log",
+            "echo END ${'$'}(date +%s) >> $log"
         ).joinToString("\n")
     }
 
-    /**
-     * 下发任务：
-     *  1) Termux bash 用 base64 把脚本写进共享目录（无引号问题）
-     *  2) proot Ubuntu 执行脚本
-     */
-    fun start(context: Context, task: String): Boolean {
-        val script = buildScript(task)
+    fun logFile(context: Context, taskId: Long): File =
+        File(appOutDir(context), "mimo_run_$taskId.log")
+
+    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis()): Boolean {
+        val script = buildScript(task, taskId)
         val b64 = Base64.encodeToString(script.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-        val write = "mkdir -p $HOST_DIR && echo $b64 | base64 -d > $HOST_DIR/$SCRIPT_NAME && chmod +x $HOST_DIR/$SCRIPT_NAME"
+        val scriptName = "mimo_task_$taskId.sh"
+        val write = "mkdir -p $HOST_DIR && echo $b64 | base64 -d > $HOST_DIR/$scriptName && chmod +x $HOST_DIR/$scriptName"
         // 与手动验证过的命令完全一致：用 host 路径当脚本路径
         val run = "echo WRAP_START >> $HOST_DIR/bridge_log.txt && " +
-            "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- /bin/bash $HOST_DIR/$SCRIPT_NAME && " +
+            "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- /bin/bash $HOST_DIR/$scriptName && " +
             "echo WRAP_OK >> $HOST_DIR/bridge_log.txt || echo WRAP_FAIL >> $HOST_DIR/bridge_log.txt"
         TermuxBridge.writeLog(context, "MIMO-SETUP(len=${b64.length}): ok")
         // 不自动唤醒 Termux：直接后台命令，失败由调用方提示用户检查 Termux
@@ -170,9 +169,10 @@ object MimoRunner {
     }
 
     /** 中断当前 mimo 任务 */
-    fun cancel(context: Context): Boolean {
+    fun cancel(context: Context, taskId: Long = 0L): Boolean {
+        val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
         val cmd = "proot-distro login ubuntu --bind /storage/emulated/0:/sdcard -- " +
-            "/bin/bash -lc 'pkill -f \"mimo run\" 2>/dev/null; echo CANCELLED >> /sdcard/Download/MiMoChat/mimo_run.log'"
+            "/bin/bash -lc 'echo CANCELLED >> /sdcard/Download/MiMoChat/$log'"
         return TermuxBridge.runInBackground(context, cmd)
     }
 
@@ -204,7 +204,7 @@ object MimoRunner {
             waited += pollMs
             val hit = dir.listFiles()?.filter {
                 it.isFile &&
-                    it.name !in ignore &&
+                    it.name !in ignore && !it.name.startsWith("mimo_run_") && !it.name.startsWith("mimo_task_") &&
                     it.extension.lowercase() !in skipExt &&   // 排除源码脚本
                     it.length() > 0 &&
                     it.lastModified() >= startTimeMs - 2000
