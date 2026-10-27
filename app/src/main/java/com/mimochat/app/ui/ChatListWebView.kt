@@ -373,6 +373,18 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   border-radius:8px;padding:5px 8px;cursor:pointer;display:inline-flex;
   align-items:center;line-height:0;}
 .pending{color:$muted;font-style:italic;}
+/* 智能体任务卡 */
+.taskcard{margin:12px 0;border:1px solid $borderC;border-radius:14px;
+  overflow:hidden;background:linear-gradient(180deg,rgba(47,111,237,0.06),transparent 60%),$codeBg;}
+.taskcard .thead{display:flex;align-items:center;gap:8px;
+  padding:10px 12px;background:rgba(47,111,237,0.10);
+  border-bottom:1px solid $borderC;font-size:13px;font-weight:600;}
+.taskcard .tbody{padding:10px 12px;font-size:13px;line-height:1.7;}
+.taskcard .step{margin:3px 0;display:flex;gap:6px;align-items:flex-start;}
+.taskcard .step .ic{flex:0 0 auto;}
+.taskcard .status-run{color:$accent;}
+.taskcard .status-ok{color:#27AE60;}
+.taskcard .status-err{color:#E74C3C;}
 /* 高亮 */
 .hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-type,.hljs-name,
 .hljs-strong{color:#C678DD;}
@@ -1076,6 +1088,34 @@ function attHtml(a){
     + 'justify-content:center;font-size:12px;">' + tag + '</div>'
     + '<div class="name">' + name + '</div></div>';
 }
+
+function taskCardHtml(m){
+  var c = String(m.content || '');
+  var lines = c.split('\n');
+  // 首行是标题/状态
+  var title = '智能体任务';
+  var bodyLines = lines;
+  if (lines.length && lines[0]){ title = lines[0]; bodyLines = lines.slice(1); }
+  var running = /运行中|已下发|执行/.test(c);
+  var ok = /完成|✅/.test(c);
+  var err = /❌|中断|失败/.test(c);
+  var cls = ok ? 'status-ok' : (err ? 'status-err' : (running ? 'status-run' : ''));
+  var icon = ok ? '✅' : (err ? '⛔' : '⚙');
+  var h = '<div class="taskcard"><div class="thead"><span>' + icon + '</span>'
+    + '<span>' + esc(title) + '</span></div><div class="tbody">';
+  bodyLines.forEach(function(ln){
+    if (!String(ln).trim()) return;
+    h += '<div class="step"><span class="ic">' + esc(ln) + '</span></div>';
+  });
+  if (m.attachments && m.attachments.length){
+    h += '<div class="att-row" style="margin-top:8px">';
+    for (var i=0;i<m.attachments.length;i++) h += attHtml(m.attachments[i]);
+    h += '</div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
 function msgHtml(m){
   var isUser = m.role === 'user';
   var h = '<div class="msg ' + (isUser ? 'user' : 'ai') + '" id="msg-' + m.id + '">';
@@ -1094,7 +1134,9 @@ function msgHtml(m){
     h += '<details class="reason"' + open + '><summary>思考过程' + secs
       + '</summary><pre>' + esc(m.reasoning) + '</pre></details>';
   }
-  if (m.content && String(m.content).length)
+  if (m.task){
+    h += taskCardHtml(m);
+  } else if (m.content && String(m.content).length)
     h += '<div class="content">' + blockMd(m.content) + '</div>';
   else if (m.pending && !(m.reasoning && String(m.reasoning).length))
     h += '<div class="pending">正在思考…</div>';

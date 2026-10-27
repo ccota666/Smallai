@@ -68,10 +68,10 @@ class ChatViewModel(
         repo.insertLocalMessage(convId, role, content)
 
     suspend fun insertLocalTask(content: String): Long =
-        repo.insertLocalMessage(conversationId, "assistant", content)
+        repo.insertLocalMessage(conversationId, "assistant", "[TASK]\n$content")
 
     suspend fun updateLocalTask(id: Long, content: String, attachmentsJson: String? = null) =
-        repo.updateMessageContent(id, content, attachmentsJson)
+        repo.updateMessageContent(id, "[TASK]\n$content", attachmentsJson)
 
     fun init(convId: Long) {
         // 注意顺序：先判重再赋值，否则 observer 永远不会注册（消息全不显示）

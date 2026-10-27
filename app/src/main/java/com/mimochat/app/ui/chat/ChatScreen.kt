@@ -1422,10 +1422,13 @@ private fun buildMessagesJson(
     for ((idx, m) in messages.withIndex()) {
         val isLast = idx == messages.lastIndex
         val isStreamingMsg = isLast && generating && m.pending
+        val rawContent = if (isStreamingMsg) streaming else m.content
+        val isTask = rawContent.startsWith("[TASK]\n")
         val o = JSONObject()
             .put("id", m.id)
             .put("role", m.role)
-            .put("content", if (isStreamingMsg) streaming else m.content)
+            .put("task", isTask)
+            .put("content", if (isTask) rawContent.removePrefix("[TASK]\n") else rawContent)
             .put("reasoning", if (isStreamingMsg) reasoning else m.reasoning)
             .put("thinkingMs", if (isStreamingMsg) 0 else m.thinkingMs)
             .put("pending", m.pending && isStreamingMsg)  // 非正在生成的一律不显示「正在思考」
