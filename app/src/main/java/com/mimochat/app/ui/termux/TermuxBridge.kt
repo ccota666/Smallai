@@ -91,6 +91,17 @@ object TermuxBridge {
             writeLog(context, "WAKE fail: ${e.message}")
         }
         // 延迟执行，等进程起来
+        // 唤醒 Termux 会把它拉到前台 —— 600ms 后把自己带回前台
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            runCatching {
+                val back = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                back?.addFlags(
+                    android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                )
+                back?.let { context.startActivity(it) }
+            }
+        }, 600L)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             runInBackground(context, command)
         }, delayMs)

@@ -64,6 +64,9 @@ class ChatViewModel(
     var conversationId: Long = -1L
         private set
 
+    suspend fun insertLocalMessage(convId: Long, role: String, content: String) =
+        repo.insertLocalMessage(convId, role, content)
+
     suspend fun insertLocalTask(content: String): Long =
         repo.insertLocalMessage(conversationId, "assistant", content)
 
