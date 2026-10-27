@@ -578,6 +578,8 @@ fun ChatScreen(
                         val taskId = System.currentTimeMillis()
                         val conv = vm.conversationId
                         scope.launch {
+                            // 用户提问入库，显示气泡
+                            vm.insertLocalMessage(vm.conversationId, "user", taskText)
                             val aiId = vm.insertLocalTask("⏳ 任务已下发，正在执行…")
                             com.mimochat.app.ui.termux.AgentTaskManager.start(
                                 context, conv, taskId, taskText
