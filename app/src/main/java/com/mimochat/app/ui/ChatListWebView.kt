@@ -633,8 +633,9 @@ function bindFsGestures(){
     if (e.touches.length === 2 && pinchDist > 0){
       e.preventDefault();
       var d = distOf(e.touches);
-      var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      var rect = el.getBoundingClientRect();
+      var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
       var s0 = fsS;
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
       if (s1 !== s0){
