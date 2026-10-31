@@ -611,6 +611,17 @@ function bindFsGestures(){
 
   el.addEventListener('touchstart', function(e){
     if (e.touches.length === 2){
+      // 代码块不参与缩放：捰合点在 pre/code 内则忽略
+      var t1 = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+      var t2 = document.elementFromPoint(e.touches[1].clientX, e.touches[1].clientY);
+      var inCode = function(el){
+        while (el && el !== el.ownerDocument.body){
+          if (el.tagName === 'PRE' || el.tagName === 'CODE' || el.classList && el.classList.contains('codebody')) return true;
+          el = el.parentElement;
+        }
+        return false;
+      };
+      if (inCode(t1) || inCode(t2)) { pinchDist = 0; return; }
       pinchDist = distOf(e.touches);
       panLast = null;
     } else if (e.touches.length === 1 && fsS > 1.02){
