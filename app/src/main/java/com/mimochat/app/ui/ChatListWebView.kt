@@ -56,6 +56,9 @@ fun ChatListWebView(
     }
 
     var lastFollowTrigger by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    // 记录上次发给 WebView 的 JSON，未变则不重渲染（避免每次重组都重跑 markdown/hljs）
+    var lastMsgsJson by remember { androidx.compose.runtime.mutableStateOf("") }
+    var lastStreamJson by remember { androidx.compose.runtime.mutableStateOf("") }
 
     // WebView 复用：缓存在 appContext 上，进出对话不重建（避免闪烁/重复初始化）
     val cacheKey = "chat_webview"
@@ -210,10 +213,15 @@ fun ChatListWebView(
             (wv.parent as? android.view.ViewGroup)?.removeView(wv)
         },
         update = { wv ->
-            wv.evaluateJavascript(
-                "window.__update && window.__update($messagesJson, $streamingJson);",
-                null
-            )
+            // 只在 JSON 实际变化时才重渲染，避免卡顿
+            if (messagesJson != lastMsgsJson || streamingJson != lastStreamJson) {
+                lastMsgsJson = messagesJson
+                lastStreamJson = streamingJson
+                wv.evaluateJavascript(
+                    "window.__update && window.__update($messagesJson, $streamingJson);",
+                    null
+                )
+            }
             // 关键：scrollTrigger 必须「变化才触发一次」。
             // update 每次重组都会跑，若只判断 !=0 就会每帧调 __follow()，
             // 用户取消跟随后立刻被拉回来。
@@ -347,7 +355,8 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .content img{max-width:100%;border-radius:10px;}
 /* 全屏层 */
 #fs{position:fixed;inset:0;background:$fsBg;z-index:9999;display:none;
-  flex-direction:column;}
+  flex-direction:column;overflow:hidden;}
+#fs.zoomed{overflow:visible;}
 #fs.on{display:flex;}
 #fs .fs-top{display:flex;justify-content:space-between;align-items:center;
   padding:36px 16px 10px;gap:10px;flex-wrap:wrap;
@@ -355,12 +364,14 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   position:relative;z-index:20;background:inherit;}
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
-#fs .fs-body{padding:6px 10px 40px;overflow:auto;touch-action:none;}
-#fs .mathpad,#fs .mmpad,#fs pre{max-width:100%;width:100%;box-sizing:border-box;}
+#fs .fs-body{padding:6px 10px 40px;overflow:hidden;touch-action:none;position:relative;}
+#fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
+#fs.zoomed .fs-body{overflow:visible;}
+#fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
 #fs .mermaid svg{max-width:100%;height:auto;}
 #fs .mathpad{text-align:left;overflow-x:auto;}
-#fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:hidden;}
+#fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:visible;}
 #fs .mermaid{width:100%;min-width:0;}
 #fs .fs-top .ttl{font-size:13px;color:$muted;}
 #fs .fs-body{flex:1;overflow:auto;padding:8px 16px 30px;touch-action:none;}
@@ -423,6 +434,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .taskcard .log-fold pre{margin:2px 0 6px;padding:6px 8px;background:$codeBg;
   border-radius:6px;font-size:10.5px;line-height:1.5;white-space:pre-wrap;}
 .taskcard .log-tip{margin:10px 0 6px;font-size:13.5px;line-height:1.7;color:$fg;}
+.taskcard .log-tip p{margin:4px 0;}
+.taskcard .log-tip code{background:$codeBg;padding:1px 4px;border-radius:4px;font-size:12px;}
+.taskcard .log-tip pre{background:$codeBg;padding:8px;border-radius:8px;overflow-x:auto;}
+.taskcard .log-tip pre code{background:none;padding:0;}
+.taskcard .log-tip ul,.taskcard .log-tip ol{margin:4px 0;padding-left:20px;}
+.taskcard .log-tip h1,.taskcard .log-tip h2,.taskcard .log-tip h3{margin:8px 0 4px;font-weight:600;}
 .taskcard .log-cmd{margin:3px 0 3px 2px;font-size:11px;color:$accent;
   font-family:ui-monospace,Consolas,monospace;opacity:.9;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -432,7 +449,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   border-top:1px solid $borderC;font-size:11.5px;color:$muted;}
 .taskcard .filebar .fb-text{margin-bottom:4px;line-height:1.5;}
 .taskcard .log-full{margin-top:8px;}
-.taskcard .log-full summary{cursor:pointer;font-size:11px;color:$muted;}
+.taskcard .log-full summary{cursor:pointer;font-size:11px;color:$accent;font-weight:600;}
 .taskcard .log-full pre{margin:6px 0 0;padding:8px;background:$codeBg;border-radius:8px;
   font-size:10.5px;line-height:1.5;white-space:pre-wrap;max-height:240px;overflow:auto;}
 .taskcard .summary{margin-top:8px;padding-top:8px;border-top:1px dashed $borderC;
@@ -552,16 +569,13 @@ function fsBody(){ return document.getElementById('fsBody'); }
 function clampFs(){
   var b = fsBody();
   if (!b) return;
-  // offsetWidth/Height 是未缩放的布局尺寸
   var w = b.offsetWidth * fsS;
   var h = b.scrollHeight * fsS;
   var vw = window.innerWidth, vh = window.innerHeight;
   var minX = Math.min(0, vw - w);
   var minY = Math.min(0, vh - h);
-  if (fsX > 0) fsX = 0;
-  if (fsY > 0) fsY = 0;
-  if (fsX < minX) fsX = minX;
-  if (fsY < minY) fsY = minY;
+  fsX = Math.max(minX, Math.min(0, fsX));
+  fsY = Math.max(minY, Math.min(0, fsY));
 }
 
 function applyFsTransform(){
@@ -580,6 +594,8 @@ function resetFsView(){
     b.style.transformOrigin = '';
     b.style.width = '';
   }
+  var fsEl = document.getElementById('fs');
+  if (fsEl) fsEl.classList.remove('zoomed');
 }
 
 function distOf(t){
@@ -611,24 +627,29 @@ function bindFsGestures(){
       var s0 = fsS;
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
       if (s1 !== s0){
-        // 绕捏合中点：保持指下内容不动（相册式）
         fsX = midX - (midX - fsX) * (s1 / s0);
         fsY = midY - (midY - fsY) * (s1 / s0);
         fsS = s1;
       }
       pinchDist = d;
+      var fsEl = document.getElementById('fs');
+      if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
       applyFsTransform();
     } else if (e.touches.length === 1 && fsS > 1.02 && panLast){
       e.preventDefault();
       fsX += e.touches[0].clientX - panLast.x;
       fsY += e.touches[0].clientY - panLast.y;
       panLast = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+      var fsEl2 = document.getElementById('fs');
+      if (fsEl2) { if (fsS > 1.05) fsEl2.classList.add('zoomed'); else fsEl2.classList.remove('zoomed'); }
       applyFsTransform();
     }
   }, {passive:false});
 
-  el.addEventListener('touchend', function(){ pinchDist = 0; panLast = null; }, {passive:true});
-  el.addEventListener('touchcancel', function(){ pinchDist = 0; panLast = null; }, {passive:true});
+  el.addEventListener('touchend', function(e){
+    if (e.touches.length < 2) pinchDist = 0;
+    if (e.touches.length < 1) panLast = null;
+  }, {passive:true});
 }
 
 function closeFs(){
@@ -720,7 +741,10 @@ function bindBoxOps(){
         exp.className = 'expand-btn';
         var raw = bodyEl.textContent || '';
         var initClamped = bodyEl.classList.contains('clamped');
-        exp.textContent = initClamped ? ' 展开' : ' 收起';
+        var expIcon = initClamped
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>'
+          : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>';
+        exp.innerHTML = expIcon;
         exp.onclick = function(e){
           e.stopPropagation();
           var on = bodyEl.classList.toggle('clamped');
@@ -1184,15 +1208,32 @@ function taskCardHtml(m){
     return t.length > 160 ? t.slice(0, 160) + '…' : t;
   }
   var foldId = 0;
+  // 按行拆分工具调用（←/→/① 各自独立折叠，不混在一起）
+  function splitToolLines(seg){
+    var lines = seg.split('\n');
+    var groups = []; var cur = [];
+    lines.forEach(function(ln){
+      var s = ln.trim();
+      if (s.indexOf('←') === 0 || s.indexOf('→') === 0 || s.indexOf('$') === 0 || /^(←|→|\$)/.test(s)){
+        if (cur.length) groups.push(cur.join('\n'));
+        cur = [ln];
+      } else if (cur.length) {
+        cur.push(ln);
+      } else {
+        cur = [ln];
+      }
+    });
+    if (cur.length) groups.push(cur.join('\n'));
+    return groups;
+  }
   parts.forEach(function(seg){
     var t = seg.replace(/^\n+/, '').replace(/\n+$/, '');
     if (!t.trim()) return;
-    // 去掉我们自己写的标题行
     t = t.replace(/^\s*(任务完成|任务中断|超时未完成|⏳ 运行中|⏳ 任务已下发[^\n]*)\s*/, '').trim();
     if (!t) return;
+    // 最后一段提示语（在 EXIT_CODE 之前的自然语言）用 markdown
     var lines = t.split('\n').filter(function(x){ return String(x).trim(); });
     var f = lines[0].trim();
-    // 命令/写入/技能/普通输出 → 小字折叠（默认一行，可展开）
     var isCmd = f.indexOf('$') === 0;
     var isWrite = f.indexOf('←') >= 0 || /Write|写入|Creating/.test(f);
     var isSkill = f.indexOf('→') >= 0;
@@ -1200,20 +1241,34 @@ function taskCardHtml(m){
       && (/[。！？\u4e00-\u9fa5]/.test(f) || /^[A-Z][a-z]+ /.test(f))
       && f.indexOf('EXIT_CODE') < 0 && f.indexOf('START ') < 0 && f.indexOf('END ') < 0;
     if (isProse){
-      // [0m] 之后的提示语：大字全量显示
-      h += '<div class="log-tip">' + esc(t) + '</div>';
+      // 大字提示语：用 markdown 渲染（与普通聊天一致）
+      h += '<div class="log-tip">' + blockMd(t) + '</div>';
       return;
     }
-    // 其他：一行小字 + 可展开
-    var label = isCmd ? ('▸ ' + f.replace(/^\$ ?/, ''))
-      : isWrite ? ('← ' + f.replace(/^.*←\s*/, ''))
-      : isSkill ? ('→ ' + f)
-      : f;
-    label = label.replace(/\s+/g, ' ').trim();
-    if (label.length > 120) label = label.slice(0, 120) + '…';
-    var id = 'lf' + (foldId++);
-    h += '<details class="log-fold"><summary>' + esc(label) + '</summary>'
-      + '<pre>' + esc(t) + '</pre></details>';
+    // 命令/工具调用：按行拆分，每个独立折叠
+    var groups = splitToolLines(t);
+    groups.forEach(function(g){
+      var gt = g.trim();
+      if (!gt) return;
+      var gl = gt.split('\n').filter(function(x){ return String(x).trim(); });
+      var gf = gl[0].trim();
+      var gIsCmd = gf.indexOf('$') === 0;
+      var gIsWrite = gf.indexOf('←') >= 0 || /Write|写入|Creating/.test(gf);
+      var gIsSkill = gf.indexOf('→') >= 0;
+      // 单行命令：直接小字显示，不折叠
+      if (gIsCmd && gl.length <= 1){
+        h += '<div class="log-cmd">▸ ' + esc(gf.replace(/^\$ ?/, '')) + '</div>';
+        return;
+      }
+      var label = gIsCmd ? ('▸ ' + gf.replace(/^\$ ?/, ''))
+        : gIsWrite ? ('← ' + gf.replace(/^.*←\s*/, ''))
+        : gIsSkill ? ('→ ' + gf.replace(/^.*→\s*/, ''))
+        : gf;
+      label = label.replace(/\s+/g, ' ').trim();
+      if (label.length > 120) label = label.slice(0, 120) + '…';
+      h += '<details class="log-fold"><summary>' + esc(label) + '</summary>'
+        + '<pre>' + esc(gt) + '</pre></details>';
+    });
   });
   // 完整日志可展开（兜底，保证不丢）
   var fullLog = c.replace(/<SEG>/g, '\n').replace(/<FILES>[\s\S]*?<\/FILES>/g, '')

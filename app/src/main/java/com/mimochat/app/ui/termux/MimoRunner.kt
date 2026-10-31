@@ -51,30 +51,63 @@ object MimoRunner {
         return task.ifBlank { null }
     }
 
-    /** 生成 ubuntu 内执行的 bash 脚本内容 */
-    fun buildScript(task: String, taskId: Long = 0L, model: String = "", convId: Long = 0L): String {
+        /** 日志里除了脚手架（echo/migration/EXIT_CODE）外是否有真实任务输出 */
+    fun hasRealOutput(logText: String): Boolean {
+        val cleaned = logText.replace(Regex("\\x1B\\[[0-9;]*[A-Za-z]"), "")
+        val boilerplate = setOf(
+            "START ", "END ", "PWD=", "WORK=", "EXIT_CODE=", "CANCELLED",
+            "WRAP_START", "WRAP_OK", "WRAP_FAIL",
+            "Performing one time database migration",
+            "sqlite-migration:done",
+            "Database migration complete"
+        )
+        return cleaned.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .any { line -> boilerplate.none { bp -> line.startsWith(bp) || line == bp } }
+    }
+
+/** 生成 ubuntu 内执行的 bash 脚本内容 */
+    fun buildScript(task: String, taskId: Long = 0L, model: String = "", convId: Long = 0L, files: List<String> = emptyList()): String {
         val q = task.replace("'", "'\\''")
+        // 文件附件：拼进任务提示词
+        val fileHint = if (files.isNotEmpty()) {
+            "\\n\\n参考文件（已在 uploads/ 目录）：" + files.joinToString("、") { "uploads/$it" }
+        } else ""
+        val taskFull = task + fileHint
+        val q2 = taskFull.replace("'", "'\\''")
         val log = if (taskId != 0L) "mimo_run_$taskId.log" else "mimo_run.log"
         val pidf = "mimo_pid_$taskId"
         val cid = if (convId != 0L) convId else taskId
         val work = convDirGuest(cid)
-        val home = "$work/.mimocode"
-        val modelFlag = if (model.isNotBlank()) "--model $model " else ""
-        // -s conv_<id>：同对话续接上下文；MIMOCODE_HOME 与工作区按对话隔离
+        val cliModel = if (model.isBlank()) "xiaomi/mimo-v2.6-pro"
+            else if (model.contains("/")) model
+            else "xiaomi/$model"
+        val modelFlag = "--model $cliModel "
         return listOf(
             "#!/bin/bash",
             "mkdir -p $work",
             "cd $work",
             "export PATH=/root/.mimocode/bin:${'$'}{PATH}",
-            "export MIMOCODE_HOME=$home",
+            // 每对话独立 MIMOCODE_HOME：记忆隔离
+            // config/state 用 symlink 指向全局（登录凭证/模型），data 独立
+            // MIMOCODE_HOME 必须在 proot 文件系统（/ext4 支持 symlink）
+            // /sdcard/ 是 FAT 不支持 symlink，所以放 /root/ 下
+            "export MIMOCODE_HOME=/root/.mimohome/conv_$cid",
+            "mkdir -p ${'$'}MIMOCODE_HOME/data/memory ${'$'}MIMOCODE_HOME/cache",
+            // symlink config/state/data 除 memory 外的内容（认证、模型、插件）
+            "ln -sfn /root/.config/mimocode ${'$'}MIMOCODE_HOME/config",
+            "ln -sfn /root/.local/state/mimocode ${'$'}MIMOCODE_HOME/state",
+            "for f in /root/.local/share/mimocode/*; do bn=${'$'}(basename ${'$'}f); if [ \"${'$'}bn\" != \"memory\" ]; then ln -sfn ${'$'}f ${'$'}MIMOCODE_HOME/data/${'$'}bn; fi; done",
             "echo START ${'$'}(date +%s) > $GUEST_DIR/$log",
             "echo PWD=${'$'}(pwd) >> $GUEST_DIR/$log",
             "echo WORK=$work >> $GUEST_DIR/$log",
-            "timeout 300 $MIMO_BIN run --yolo -s conv_$cid " + modelFlag +
-                "'请把产出文件保存到当前工作目录。任务：$q' < /dev/null 2>&1 | tee -a $GUEST_DIR/$log &",
+            "echo HOME=${'$'}MIMOCODE_HOME >> $GUEST_DIR/$log",
+            // 模型格式: provider/model，缺 provider 补 xiaomi/
+            "timeout 300 $MIMO_BIN run --yolo " + modelFlag +
+                "'请把产出文件保存到当前工作目录。任务：$q2' < /dev/null 2>&1 | tee -a $GUEST_DIR/$log &",
             "echo ${'$'}! > $GUEST_DIR/$pidf",
             "wait",
-            // 收拢产物到该对话的共享目录（也兼容 agent 写到 /root /tmp）
             "find /root /tmp $work -maxdepth 4 -type f -mmin -20 2>/dev/null | while read f; do case ${'$'}f in *.md|*.txt|*.docx|*.pptx|*.xlsx|*.pdf|*.csv|*.html|*.png|*.jpg) cp -n \"${'$'}f\" $work/ 2>/dev/null ;; esac; done",
             "echo EXIT_CODE=${'$'}{PIPESTATUS[0]} >> $GUEST_DIR/$log",
             "echo END ${'$'}(date +%s) >> $GUEST_DIR/$log",
@@ -86,8 +119,8 @@ object MimoRunner {
     fun logFile(context: Context, taskId: Long): File =
         File(appOutDir(context), "mimo_run_$taskId.log")
 
-    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis(), model: String = "", convId: Long = 0L): Boolean {
-        val script = buildScript(task, taskId, model, convId)
+    fun start(context: Context, task: String, taskId: Long = System.currentTimeMillis(), model: String = "", convId: Long = 0L, files: List<String> = emptyList()): Boolean {
+        val script = buildScript(task, taskId, model, convId, files)
         val b64 = Base64.encodeToString(script.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         val scriptName = "mimo_task_$taskId.sh"
         val write = "mkdir -p $HOST_DIR && echo $b64 | base64 -d > $HOST_DIR/$scriptName && chmod +x $HOST_DIR/$scriptName"

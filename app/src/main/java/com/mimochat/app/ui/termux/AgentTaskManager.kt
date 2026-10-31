@@ -41,6 +41,11 @@ object AgentTaskManager {
 
     fun isRunning(convId: Long): Boolean = jobs.values.any { it.isActive }
 
+    /** 用户打开对话后清除蓝点 */
+    fun clearDone(convId: Long) {
+        _doneAt.value = _doneAt.value - convId
+    }
+
     /**
      * 启动任务。onMessage(text, attachmentsJson) 回调写消息。
      * 与调用方解耦：调用方销毁也不影响任务。
@@ -51,22 +56,28 @@ object AgentTaskManager {
         taskId: Long,
         task: String,
         model: String = "",
+        files: List<String> = emptyList(),
         onMessage: suspend (text: String, attJson: String?) -> Unit
     ) {
         if (jobs[taskId]?.isActive == true) return
         val appCtx = context.applicationContext
+        val msg = onMessage  // 存引用，供错误路径使用
         val job = scope.launch {
             publish(taskId, convId, "⏳ 正在检测 Termux 环境…", true)
             // 先探活：Termux 没开 / 没允许外部应用时立刻失败，不再假装「执行中」
             if (!MimoRunner.probe(appCtx)) {
-                publish(taskId, convId, "❌ Termux 未运行：请打开 Termux 后重试", false)
+                val err = "❌ Termux 未运行：请打开 Termux 后重试"
+                publish(taskId, convId, err, false)
+                onMessage(err, null)
                 return@launch
             }
             publish(taskId, convId, "⏳ 任务已下发，正在执行…", true)
             val startTime = System.currentTimeMillis()
-            val ok = MimoRunner.start(appCtx, task, taskId, model, convId)
+            val ok = MimoRunner.start(appCtx, task, taskId, model, convId, files)
             if (!ok) {
-                publish(taskId, convId, "❌ 无法启动：请检查 Termux 是否允许「外部应用」", false)
+                val err = "❌ 无法启动：请检查 Termux 是否允许「外部应用」"
+                publish(taskId, convId, err, false)
+                onMessage(err, null)
                 return@launch
             }
             // 轮询日志
@@ -93,9 +104,11 @@ object AgentTaskManager {
             // 结尾：标题 + 完整日志（保留 <SEG> 段）+ 底部文件栏
             // 只有真的跑完才有 END；有输出/产物就算成功，不拿「超时」盖住回答
             val done = log.contains("END ") || log.contains("EXIT_CODE=")
+            val hasOutput = MimoRunner.hasRealOutput(log)
             val title = when {
                 MimoRunner.isInterrupted(log) -> "任务中断"
-                done -> "任务完成"
+                done && hasOutput -> "任务完成"
+                done && !hasOutput -> "⚠️ 任务未实际执行"
                 else -> "超时未完成"
             }
             val filesLine = if (files.isNotEmpty())

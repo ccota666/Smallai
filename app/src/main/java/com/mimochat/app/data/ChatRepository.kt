@@ -23,16 +23,16 @@ class ChatRepository(
 
     fun cancelGeneration() = api.cancel()
 
-    suspend fun insertLocalMessage(convId: Long, role: String, content: String, attachmentsJson: String = ""): Long {
+    suspend fun insertLocalMessage(convId: Long, role: String, content: String, attachmentsJson: String = "", pending: Boolean = false): Long {
         return db.messageDao().insert(
             ChatMessage(conversationId = convId, role = role, content = content,
-                attachmentsJson = attachmentsJson, createdAt = System.currentTimeMillis())
+                attachmentsJson = attachmentsJson, createdAt = System.currentTimeMillis(), pending = pending)
         )
     }
 
     suspend fun updateMessageContent(id: Long, content: String, attachmentsJson: String? = null) {
         val m = db.messageDao().getById(id) ?: return
-        db.messageDao().update(m.copy(content = content, attachmentsJson = attachmentsJson ?: m.attachmentsJson))
+        db.messageDao().update(m.copy(content = content, attachmentsJson = attachmentsJson ?: m.attachmentsJson, pending = false))
     }
 
     /** 打开会话时把残留 pending 落盘，避免一直「正在思考」 */
@@ -42,7 +42,8 @@ class ChatRepository(
             db.messageDao().update(
                 m.copy(
                     pending = false,
-                    content = m.content.ifBlank { "(已中断)" },
+                    content = if (m.content.startsWith("[TASK]")) "[TASK]\n❌ 任务中断（应用已退出）"
+                        else m.content.ifBlank { "(已中断)" },
                     reasoning = m.reasoning
                 )
             )

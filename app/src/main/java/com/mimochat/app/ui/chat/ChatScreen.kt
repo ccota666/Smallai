@@ -59,7 +59,7 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.InsertDriveFile
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Mic
@@ -80,6 +80,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -105,6 +106,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -118,6 +120,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -284,9 +287,16 @@ fun ChatScreen(
                         Toast.makeText(context, "识别失败：${e.message}", Toast.LENGTH_LONG).show()
                     }
                 } else {
-                    val att = FilePicker.toAttachment(context, uri)
-                    if (att != null) attachments = attachments + att
-                    else Toast.makeText(context, "暂不支持该文件类型（支持图片、文本、音频）", Toast.LENGTH_SHORT).show()
+                    scope.launch {
+                        // 智能体模式：任意文件类型都接受；普通模式：只接受图片/文本
+                        val att = if (agentMode) {
+                            FilePicker.toFileAttachment(context, uri)
+                        } else {
+                            FilePicker.toAttachment(context, uri)
+                        }
+                        if (att != null) attachments = attachments + att
+                        else Toast.makeText(context, "暂不支持该文件类型", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -303,6 +313,18 @@ fun ChatScreen(
     var followBottom by remember { mutableStateOf(true) }
     var webViewAtBottom by remember { mutableStateOf(true) }
     var jumpMessageId by remember { mutableStateOf(0L) }
+    var artifactNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    // 加载产物列表（智能体生成的文件，排除 uploads/ 和隐藏文件）
+    LaunchedEffect(conversationId) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val dir = java.io.File("/storage/emulated/0/Download/MiMoChat", "conv_$conversationId")
+            val names = dir.listFiles()?.filter {
+                it.isFile && !it.name.startsWith(".") && !it.name.startsWith("mimo_") &&
+                    it.name != "bridge_log.txt" && it.extension.lowercase() !in setOf("sh", "log")
+            }?.map { it.name }?.sorted() ?: emptyList()
+            artifactNames = names
+        }
+    }
     var chatFullscreen by remember { mutableStateOf(false) }
     // 全屏时按安卓返回：先退出全屏，而不是离开聊天
     androidx.activity.compose.BackHandler(enabled = chatFullscreen) {
@@ -377,6 +399,8 @@ fun ChatScreen(
                 deepThinking = settings.deepThinking,
                 temperature = settings.temperature,
                 questions = messages.filter { it.role == "user" && it.content.isNotBlank() },
+                artifacts = artifactNames,
+                agentMode = agentMode,
                 onOpenList = onOpenList,
                 onSelectModel = { vm.setModel(it) },
                 onSetWebSearch = { vm.setWebSearch(it) },
@@ -499,7 +523,13 @@ fun ChatScreen(
                 agentRunning = agentRunning,
                 onToggleAgent = {
                     if (!agentMode) {
-                        if (!com.mimochat.app.ui.termux.TermuxBridge.isTermuxInstalled(context)) {
+                        val curModel = conversation?.model ?: settings.model
+                        val isExpensive = com.mimochat.app.data.ModelsParser.isExpensive(
+                            settings.models, curModel
+                        )
+                        if (isExpensive) {
+                            Toast.makeText(context, "⭐ ${curModel} 为贵模型，不建议用于智能体任务，请先切换便宜模型", Toast.LENGTH_LONG).show()
+                        } else if (!com.mimochat.app.ui.termux.TermuxBridge.isTermuxInstalled(context)) {
                             Toast.makeText(context, "未检测到 Termux，请先安装并在 Termux 设置里允许外部应用", Toast.LENGTH_LONG).show()
                         } else {
                         val perm = "com.termux.permission.RUN_COMMAND"
@@ -574,6 +604,7 @@ fun ChatScreen(
                 onSend = {
                     val taskText = inputText.trim()
                     if (agentMode && taskText.isNotEmpty()) {
+                        val atts = attachments
                         inputText = ""
                         attachments = emptyList()
                         agentRunning = true
@@ -581,12 +612,26 @@ fun ChatScreen(
                         agentTaskId = taskId
                         val conv = vm.conversationId
                         scope.launch {
+                            // 附件放 uploads/ 子目录（与智能体产出区分），同名覆盖
+                            val workDir = java.io.File("/storage/emulated/0/Download/MiMoChat", "conv_$conv")
+                            val uploadDir = java.io.File(workDir, "uploads")
+                            uploadDir.mkdirs()
+                            val fileNames = atts.mapNotNull { att ->
+                                att.path?.let { p ->
+                                    val src = java.io.File(p)
+                                    if (src.exists()) {
+                                        val dst = java.io.File(uploadDir, src.name)
+                                        runCatching { src.copyTo(dst, overwrite = true) }
+                                        src.name
+                                    } else null
+                                }
+                            }
                             // 用户提问入库，显示气泡
                             vm.insertLocalMessage(vm.conversationId, "user", taskText)
                             val aiId = vm.insertLocalTask("⏳ 任务已下发，正在执行…")
                             val curModel = conversation?.model ?: settings.model
                             com.mimochat.app.ui.termux.AgentTaskManager.start(
-                                context, conv, taskId, taskText, curModel
+                                context, conv, taskId, taskText, curModel, fileNames
                             ) { text, attJson ->
                                 vm.updateLocalTask(aiId, text, attJson)
                             }
@@ -630,6 +675,8 @@ private fun ChatTopBar(
     deepThinking: Boolean,
     temperature: Float,
     questions: List<ChatMessage>,
+    artifacts: List<String> = emptyList(),
+    agentMode: Boolean = false,
     onOpenList: () -> Unit,
     onSelectModel: (String) -> Unit,
     onSetWebSearch: (Boolean) -> Unit,
@@ -704,53 +751,126 @@ private fun ChatTopBar(
                 }
             }
 
-            // 问题列表：跳转到当前对话中的某次提问
+            // 问题/产物双分页
             Box {
                 AppIconButton(
                     onClick = { questionsMenuOpen = true },
                     icon = Icons.AutoMirrored.Rounded.ListAlt,
-                    contentDescription = "问题列表",
-                    tint = if (questions.isNotEmpty()) MaterialTheme.colorScheme.primary
+                    contentDescription = "问题与产物",
+                    tint = if (questions.isNotEmpty() || artifacts.isNotEmpty())
+                        MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 DropdownMenu(
                     expanded = questionsMenuOpen,
                     onDismissRequest = { questionsMenuOpen = false },
-                    modifier = Modifier.widthIn(min = 220.dp, max = 300.dp)
+                    modifier = Modifier.widthIn(min = 260.dp, max = 320.dp)
                 ) {
-                    if (questions.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("暂无提问", style = MaterialTheme.typography.bodySmall) },
-                            onClick = { questionsMenuOpen = false }
-                        )
-                    } else {
-                        questions.forEachIndexed { index, q ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "${index + 1}. ${q.content.trim().replace('\n', ' ')}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                onClick = {
-                                    questionsMenuOpen = false
-                                    onJumpToQuestion(q.id)
-                                }
+                    var selectedTab by remember { mutableIntStateOf(0) }
+                    // Tab 标签栏
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        listOf("问题 (${questions.size})", "产物 (${artifacts.size})").forEachIndexed { i, label ->
+                            FilterChip(
+                                selected = selectedTab == i,
+                                onClick = { selectedTab = i },
+                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.height(28.dp)
                             )
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(horizontal = 12.dp))
+                    if (selectedTab == 0) {
+                        // 问题列表
+                        if (questions.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("暂无提问", style = MaterialTheme.typography.bodySmall) },
+                                onClick = { questionsMenuOpen = false }
+                            )
+                        } else {
+                            questions.forEachIndexed { index, q ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "${index + 1}. ${q.content.trim().replace('\n', ' ')}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    onClick = {
+                                        questionsMenuOpen = false
+                                        onJumpToQuestion(q.id)
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        // 产物列表
+                        if (artifacts.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("暂无产物", style = MaterialTheme.typography.bodySmall) },
+                                onClick = { questionsMenuOpen = false }
+                            )
+                        } else {
+                            artifacts.forEach { name ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.AutoMirrored.Rounded.InsertDriveFile, null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                name,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    },
+                                    onClick = { questionsMenuOpen = false }
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            AppIconButton(
-                onClick = { settingsMenuOpen = true },
-                icon = Icons.Rounded.Settings,
-                contentDescription = "聊天设置"
-            )
+            // 设置按钮：智能体模式下显示蓝点+文字
+            Box {
+                AppIconButton(
+                    onClick = { settingsMenuOpen = true },
+                    icon = Icons.Rounded.Settings,
+                    contentDescription = "聊天设置"
+                )
+                if (agentMode) {
+                    // 右上角蓝点
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 1.dp, y = 1.dp)
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .border(1.5.dp, MaterialTheme.colorScheme.background, CircleShape)
+                    )
+                }
+            }
             DropdownMenu(expanded = settingsMenuOpen, onDismissRequest = { settingsMenuOpen = false }) {
                 Column(Modifier.widthIn(min = 260.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    if (agentMode) {
+                        Text(
+                            "⚠️ 智能体模式下此处设置不生效",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text("联网搜索", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                         Switch(checked = webSearch, onCheckedChange = onSetWebSearch)
@@ -1124,7 +1244,7 @@ private fun AttachmentCard(a: Attachment, onEditImage: ((String) -> Unit)? = nul
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        if (a.type == "text") Icons.Rounded.Description else Icons.Rounded.InsertDriveFile,
+                        if (a.type == "text") Icons.Rounded.Description else Icons.AutoMirrored.Rounded.InsertDriveFile,
                         null,
                         tint = colors.primary
                     )
@@ -1250,7 +1370,7 @@ private fun InputBar(
                                     when (a.type) {
                                         "image" -> Icons.Rounded.Image
                                         "text" -> Icons.Rounded.Description
-                                        else -> Icons.Rounded.InsertDriveFile
+                                        else -> Icons.AutoMirrored.Rounded.InsertDriveFile
                                     },
                                     null,
                                     modifier = Modifier.size(16.dp)

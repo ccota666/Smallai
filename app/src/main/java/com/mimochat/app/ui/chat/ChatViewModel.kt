@@ -68,7 +68,7 @@ class ChatViewModel(
         repo.insertLocalMessage(convId, role, content)
 
     suspend fun insertLocalTask(content: String): Long =
-        repo.insertLocalMessage(conversationId, "assistant", "[TASK]\n$content")
+        repo.insertLocalMessage(conversationId, "assistant", "[TASK]\n$content", pending = true)
 
     suspend fun updateLocalTask(id: Long, content: String, attachmentsJson: String? = null) =
         repo.updateMessageContent(id, "[TASK]\n$content", attachmentsJson)

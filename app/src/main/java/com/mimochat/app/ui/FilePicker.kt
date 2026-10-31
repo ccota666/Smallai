@@ -37,6 +37,28 @@ object FilePicker {
         else -> "文件"
     }
 
+    /**
+     * 智能体模式用：任意文件类型都存为文件（有 path），方便复制到共享目录
+     */
+    suspend fun toFileAttachment(context: Context, uri: Uri): Attachment? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val name = displayName(context, uri) ?: "file"
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: return@withContext null
+                val dir = File(context.filesDir, "attachments")
+                dir.mkdirs()
+                val file = File(dir, "${System.currentTimeMillis()}_${name.sanitize()}")
+                file.writeBytes(bytes)
+                val type = when {
+                    name.substringAfterLast('.').lowercase() in setOf("png","jpg","jpeg","gif","webp","bmp") -> "image"
+                    isTextExt(name) -> "text"
+                    else -> "file"
+                }
+                Attachment(type, path = file.absolutePath, name = name)
+            }.getOrNull()
+        }
+
     suspend fun toAttachment(context: Context, uri: Uri): Attachment? =
         withContext(Dispatchers.IO) {
             runCatching {

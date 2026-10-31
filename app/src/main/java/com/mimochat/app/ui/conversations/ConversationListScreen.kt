@@ -239,6 +239,7 @@ fun ConversationListScreen(
                                 if (selectionMode) {
                                     selected = if (conv.id in selected) selected - conv.id else selected + conv.id
                                 } else {
+                                    com.mimochat.app.ui.termux.AgentTaskManager.clearDone(conv.id)
                                     onOpenChat(conv.id)
                                 }
                             },
