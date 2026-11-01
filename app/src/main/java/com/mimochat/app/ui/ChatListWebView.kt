@@ -389,7 +389,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
 #fs .mermaid svg{max-width:100%;height:auto;}
 #fs .mathpad{text-align:left;overflow-x:auto;}
-#fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:visible;}
+#fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:visible;max-width:100%;}
+#fs .mathpad{overflow-x:auto !important;max-width:100%;}
+#fs .mathpad .katex{white-space:nowrap;}
 #fs .mermaid{width:100%;min-width:0;}
 #fs .fs-top .ttl{font-size:13px;color:$muted;}
 #fs .fs-body{flex:1;overflow:auto;padding:8px 16px 30px;touch-action:none;}
@@ -681,7 +683,7 @@ function bindFsGestures(){
       baseS = fsS; baseFsX = fsX; baseFsY = fsY;
       baseMidX = (a[0].x+a[1].x)/2; baseMidY = (a[0].y+a[1].y)/2;
       panId = -1;
-    } else if (a.length === 1 && fsS > 1.01){
+    } else if (a.length === 1){
       panId = e.pointerId; panX = e.clientX; panY = e.clientY;
     }
   }
@@ -703,11 +705,11 @@ function bindFsGestures(){
       var fsEl = document.getElementById('fs');
       if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
       var rBtn = document.getElementById('resetBtn');
-      if (rBtn) rBtn.style.display = fsS > 1.05 ? '' : 'none';
+      if (rBtn) rBtn.style.display = (Math.abs(fsS - 1) > 0.01) ? '' : 'none';
       var ttl = document.getElementById('fsTtl');
       if (ttl) ttl.textContent = fsS > 1.05 ? Math.round(fsS * 100) + '%' : ttl.dataset.orig || '';
       applyFsTransform();
-    } else if (a.length === 1 && fsS > 1.01 && panId === e.pointerId){
+    } else if (a.length === 1 && panId === e.pointerId){
       fsX += e.clientX - panX; fsY += e.clientY - panY;
       panX = e.clientX; panY = e.clientY;
       applyFsTransform();
