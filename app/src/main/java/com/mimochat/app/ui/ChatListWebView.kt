@@ -557,9 +557,11 @@ function openCodeFs(title, codeHtml){
   b.innerHTML = codeHtml;
   document.getElementById('fs').classList.add('on');
   // 代码模式：强制 block 布局 + 明确高度 + 可滚动
-  b.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;'
-    + 'overflow:auto;touch-action:auto;padding:0 0 20px 0;transform:none;'
-    + '-webkit-overflow-scrolling:touch;display:block;';
+  b.style.cssText = 'overflow:auto;touch-action:auto;padding:8px 12px 40px;transform:none;'
+    + 'display:block;max-height:none;height:auto;';
+  // 让 #fs 本身可滚动
+  document.getElementById('fs').style.overflow = 'auto';
+  document.getElementById('fs').style.touchAction = 'auto';
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
@@ -569,6 +571,8 @@ function openFs(title, html, zoomable){
   fsLandscape = false;
   var b = document.getElementById('fsBody');
   b.style.cssText = '';
+  document.getElementById('fs').style.overflow = '';
+  document.getElementById('fs').style.touchAction = '';
   document.getElementById('fsTtl').textContent = title; document.getElementById('fsTtl').dataset.orig = title;
   document.getElementById('rotBtn').textContent = '横屏';
   b.innerHTML = html;
