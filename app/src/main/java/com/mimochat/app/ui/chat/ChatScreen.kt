@@ -502,7 +502,7 @@ fun ChatScreen(
                 }
 
                 // 回到底部按钮：浮在输入栏上方
-                if (hasNewBelow && messages.isNotEmpty() && !chatFullscreen) {
+                if (!webViewAtBottom && messages.isNotEmpty() && !chatFullscreen) {
                     JumpToBottomButton(
                         flash = hasNewBelow || generating,
                         onClick = {
