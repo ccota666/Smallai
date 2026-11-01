@@ -167,23 +167,16 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // 自动模式
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp)) {
-
-                    if (config.autoMode && config.plans.isNotEmpty()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text("当前方案", style = MaterialTheme.typography.labelMedium)
-                        config.plans.forEach { plan ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                androidx.compose.material3.RadioButton(
-                                    selected = config.activePlanId == plan.id,
-                                    onClick = { scope.launch { repo.setActivePlan(plan.id) } }
-                                )
-                                Text(plan.name, modifier = Modifier.weight(1f))
-                                Text("压缩 ${plan.quality}%")
-                            }
-                        }
+            if (config.autoMode && config.plans.isNotEmpty()) {
+                Text("当前方案", style = MaterialTheme.typography.labelMedium)
+                config.plans.forEach { plan ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.RadioButton(
+                            selected = config.activePlanId == plan.id,
+                            onClick = { scope.launch { repo.setActivePlan(plan.id) } }
+                        )
+                        Text(plan.name, modifier = Modifier.weight(1f))
+                        Text("压缩 ${plan.quality}%")
                     }
                 }
             }
