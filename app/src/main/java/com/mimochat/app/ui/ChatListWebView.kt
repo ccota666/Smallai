@@ -571,10 +571,10 @@ function openCodeFs(title, codeHtml){
     + '<button onclick="(function(){var l=window.__codeLand=!window.__codeLand;'
     + 'try{Android.setOrientation(l?90:0);}catch(e){}';})()" '
     + 'style="border:1px solid rgba(128,128,128,0.4);border-radius:10px;padding:6px 10px;cursor:pointer;">'
-    + '<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"2\" y=\"6\" width=\"20\" height=\"12\" rx=\"2\"/><path d=\"M12 2v4\"/><path d=\"M12 18v4\"/></svg></button>'
+    + '<svg width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><rect x=\'2\' y=\'6\' width=\'20\' height=\'12\' rx=\'2\'/><path d=\'M12 2v4\'/><path d=\'M12 18v4\'/></svg></button>'
     + '<button onclick="this.closest(\'#codeOverlay\').remove();try{Android.setFullscreen(false);Android.setOrientation(0);}catch(e){}" '
     + 'style="border:1px solid #F44336;border-radius:10px;padding:6px 10px;cursor:pointer;">'
-    + '<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#F44336\" stroke-width=\"2\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"/><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"/></svg></button>'
+    + '<svg width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'#F44336\' stroke-width=\'2\'><line x1=\'18\' y1=\'6\' x2=\'6\' y2=\'18\'/><line x1=\'6\' y1=\'6\' x2=\'18\' y2=\'18\'/></svg></button>'
     + '</span></div>'
     + '<pre style="margin:0;padding:12px;font-size:13px;line-height:1.6;'
     + 'white-space:pre;overflow-x:auto;">' + codeHtml + '</pre>';
