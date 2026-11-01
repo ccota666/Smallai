@@ -562,7 +562,7 @@ function openCodeFs(title, codeHtml){
   document.getElementById('fs').classList.add('code-mode');
   // 代码模式：强制 block 布局 + 明确高度 + 可滚动
   // 代码模式：fs-body 用 block 自然撑开，#fs 滚动
-  b.style.cssText = 'display:block;overflow:visible;height:auto;'
+  b.style.cssText = 'display:block;overflow:visible;height:auto;flex:none;'
     + 'touch-action:auto;padding:8px 12px 40px;transform:none;';
   var fs = document.getElementById('fs');
   fs.style.overflow = 'auto';
