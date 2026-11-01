@@ -607,47 +607,79 @@ function bindFsGestures(){
   if (!el || el.__gest) return;
   el.__gest = true;
 
-  el.addEventListener('touchstart', function(e){
-    if (e.touches.length === 2){
-      pinchDist = distOf(e.touches);
-      pinchS0 = fsS;
-      panLast = null;
-    } else if (e.touches.length === 1 && fsS > 1.01){
-      panLast = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-    }
-  }, {passive:true});
+  // 用 pointer 事件（WebView 兼容更好），touch-action:none 已在 CSS 中禁止默认手势
+  var pts = {};   // pointerId -> {x, y}
+  var pCount = 0;
+  var baseDist = 0, baseS = 1;
+  var baseMidX = 0, baseMidY = 0;
+  var baseFsX = 0, baseFsY = 0;
+  var panId = -1, panX = 0, panY = 0;
 
-  el.addEventListener('touchmove', function(e){
-    if (e.touches.length === 2 && pinchDist > 1){
-      e.preventDefault();
-      var d = distOf(e.touches);
-      var s1 = pinchS0 * (d / pinchDist);
+  function ptArr(){ return Object.keys(pts).map(function(k){ return pts[k]; }); }
+
+  el.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    pts[e.pointerId] = {x: e.clientX, y: e.clientY};
+    pCount = Object.keys(pts).length;
+    if (pCount === 2){
+      var a = ptArr();
+      baseDist = Math.sqrt((a[0].x-a[1].x)*(a[0].x-a[1].x)+(a[0].y-a[1].y)*(a[0].y-a[1].y)) || 1;
+      baseS = fsS;
+      baseMidX = (a[0].x + a[1].x) / 2;
+      baseMidY = (a[0].y + a[1].y) / 2;
+      baseFsX = fsX;
+      baseFsY = fsY;
+      panId = -1;
+    } else if (pCount === 1 && fsS > 1.01){
+      panId = e.pointerId;
+      panX = e.clientX;
+      panY = e.clientY;
+    }
+  }, {passive:false});
+
+  el.addEventListener('pointermove', function(e){
+    if (!pts[e.pointerId]) return;
+    e.preventDefault();
+    pts[e.pointerId] = {x: e.clientX, y: e.clientY};
+    var a = ptArr();
+    if (a.length === 2 && baseDist > 1){
+      var d = Math.sqrt((a[0].x-a[1].x)*(a[0].x-a[1].x)+(a[0].y-a[1].y)*(a[0].y-a[1].y)) || 1;
+      var s1 = baseS * (d / baseDist);
       s1 = Math.min(8, Math.max(0.3, s1));
-      // 捰合中点为锚点（坐标相对 body）
+      var mx = (a[0].x + a[1].x) / 2;
+      var my = (a[0].y + a[1].y) / 2;
+      // 以初始捰合中点为锚点
       var bx = el.offsetLeft, by = el.offsetTop;
-      var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - bx;
-      var my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - by;
-      fsX = mx - (mx - fsX) * (s1 / fsS);
-      fsY = my - (my - fsY) * (s1 / fsS);
+      var amx = mx - bx, amy = my - by;
+      var bmx = baseMidX - bx, bmy = baseMidY - by;
+      fsX = amx - (bmx - baseFsX) * (s1 / baseS) - (amx - bmx) * (s1 / baseS) + (amx - bmx);
+      fsY = amy - (bmy - baseFsY) * (s1 / baseS) - (amy - bmy) * (s1 / baseS) + (amy - bmy);
+      // 简化：绕当前中点缩放
+      fsX = amx - (amx - baseFsX) * (s1 / baseS);
+      fsY = amy - (amy - baseFsY) * (s1 / baseS);
       fsS = s1;
       var fsEl = document.getElementById('fs');
       if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
       var rBtn = document.getElementById('resetBtn');
       if (rBtn) rBtn.style.display = fsS > 1.05 ? '' : 'none';
       applyFsTransform();
-    } else if (e.touches.length === 1 && fsS > 1.01 && panLast){
-      e.preventDefault();
-      fsX += e.touches[0].clientX - panLast.x;
-      fsY += e.touches[0].clientY - panLast.y;
-      panLast = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+    } else if (a.length === 1 && fsS > 1.01 && panId === e.pointerId){
+      fsX += e.clientX - panX;
+      fsY += e.clientY - panY;
+      panX = e.clientX;
+      panY = e.clientY;
       applyFsTransform();
     }
   }, {passive:false});
 
-  el.addEventListener('touchend', function(e){
-    if (e.touches.length < 2) { pinchDist = 0; pinchS0 = 1; }
-    if (e.touches.length < 1) panLast = null;
-  }, {passive:true});
+  function releasePointer(e){
+    delete pts[e.pointerId];
+    pCount = Object.keys(pts).length;
+    if (pCount < 2) { baseDist = 0; }
+    if (pCount < 1) panId = -1;
+  }
+  el.addEventListener('pointerup', releasePointer, {passive:true});
+  el.addEventListener('pointercancel', releasePointer, {passive:true});
 }
 
 var pinchDist = 0, panLast = null, pinchS0 = 1;
