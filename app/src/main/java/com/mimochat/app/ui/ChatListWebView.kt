@@ -366,6 +366,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
 #fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
+#fs .fs-body pre,#fs .fs-body .codebody,#fs .fs-body .box pre{
+  overflow-x:auto;overflow-y:hidden;
+  transform-origin:0 0;
+  /* 代码块反向缩放：不跟随全局缩放 */
+  transform:scale(var(--code-inv,1)) !important;
+}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 
@@ -584,6 +590,11 @@ function applyFsTransform(){
   if (!b) return;
   b.style.transformOrigin = '0 0';
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
+  // 代码块反向缩放：保持原大小
+  b.style.setProperty('--code-inv', (1 / fsS).toString());
+  // 确保全链无裁切
+  document.documentElement.style.overflow = 'visible';
+  document.body.style.overflow = 'visible';
 }
 
 function resetFsView(){
@@ -593,6 +604,7 @@ function resetFsView(){
     b.style.transform = '';
     b.style.transformOrigin = '';
     b.style.width = '';
+    b.style.setProperty('--code-inv', '1');
   }
   var fsEl = document.getElementById('fs');
   if (fsEl) fsEl.classList.remove('zoomed');
