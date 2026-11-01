@@ -561,12 +561,11 @@ function openCodeFs(title, codeHtml){
   document.getElementById('fs').classList.add('on');
   document.getElementById('fs').classList.add('code-mode');
   // 代码模式：强制 block 布局 + 明确高度 + 可滚动
-  // 代码模式：fs-body 用 block 自然撑开，#fs 滚动
-  b.style.cssText = 'display:block;overflow:visible;height:auto;flex:none;'
-    + 'touch-action:auto;padding:8px 12px 40px;transform:none;';
-  var fs = document.getElementById('fs');
-  fs.style.overflow = 'auto';
-  fs.style.touchAction = 'auto';
+  // 代码模式：fs-body 绝对定位撑满，自己滚动
+  b.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;'
+    + 'overflow:auto;display:block;flex:none;'
+    + 'touch-action:auto;padding:8px 12px 20px;transform:none;'
+    + '-webkit-overflow-scrolling:touch;';
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
