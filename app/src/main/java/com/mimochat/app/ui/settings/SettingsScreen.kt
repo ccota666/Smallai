@@ -229,10 +229,11 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun ModelDropdown(models: List<String>, current: String, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    val isExpensive = com.mimochat.app.data.ModelsParser.isExpensive(models.joinToString(","), current)
+    val cleanCurrent = current.removePrefix("**").removeSuffix("**").trim()
+    val isExpensive = com.mimochat.app.data.ModelsParser.isExpensive(models.joinToString(","), cleanCurrent)
     Box {
         OutlinedTextField(
-            value = current,
+            value = cleanCurrent,
             onValueChange = {},
             readOnly = true,
             label = { Text("默认模型") },
