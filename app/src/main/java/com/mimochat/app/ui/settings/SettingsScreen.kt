@@ -132,8 +132,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 return@Column
             }
             if (settingsPage != 0) return@Column
-            SectionTitle("API 连接")
-            // Base URL 预设 + 自定义
+                        // Base URL 预设 + 自定义
             Text("Base URL", style = MaterialTheme.typography.labelLarge)
             val urlPresets = listOf(
                 "https://api.xiaomimimo.com/v1" to "按量付费 API",
@@ -171,8 +170,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            SectionTitle("模型")
-            OutlinedTextField(
+                        OutlinedTextField(
                 value = models,
                 onValueChange = { models = it; vm.setModels(it) },
                 label = { Text("模型列表（逗号分隔）") },
