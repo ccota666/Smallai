@@ -33,6 +33,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.CardDefaults
@@ -110,6 +112,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         0 -> "API 连接与模型"
                         2 -> "外观"
                         3 -> "高级"
+                        4 -> "使用教程"
                         else -> "设置"
                     })
                 },
@@ -153,6 +156,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                                 onClick = { baseUrl = u; vm.setBaseUrl(u) }
                             )
                             Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
+                            if (name.contains("Token Plan")) {
+                                Text("最好不要使用，详情见官网使用条例",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFFE74C3C))
+                            }
                         }
                     }
                     OutlinedTextField(
@@ -170,11 +178,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    OutlinedButton(onClick = { settingsPage = 4 }, modifier = Modifier.fillMaxWidth()) {
+                        Text("获取 API Key 教程")
+                    }
                     Text(
-                        "Key 获取：platform.xiaomimimo.com → API Keys",
+                        "此处设置仅对聊天模式生效，智能体模式请参考",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    TextButton(onClick = { settingsPage = 4 }) {
+                        Text("MiMoCode 部署教程", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 SettingsSectionCard {
@@ -232,6 +246,18 @@ fun SettingsScreen(onBack: () -> Unit) {
                     )
                 }
             }
+            }
+
+            if (settingsPage == 4) {
+                SettingsSectionCard {
+                    Text("教程列表", style = MaterialTheme.typography.labelLarge)
+                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                        Text("API 获取")
+                    }
+                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                        Text("MiMoCode 部署与智能体模式使用")
+                    }
+                }
             }
         }
     }
