@@ -367,17 +367,23 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
 #fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
 #fs .fs-body pre,#fs .fs-body .codebody,#fs .fs-body .box pre{
-  overflow-x:auto;overflow-y:hidden;
-  transform-origin:0 0;
-  /* 代码块反向缩放：不跟随全局缩放 */
+  overflow:auto !important;
+  max-height:70vh;
+  /* 代码块反向缩放：保持原大小 */
   transform:scale(var(--code-inv,1)) !important;
+  transform-origin:0 0;
+  position:relative;z-index:10;
+  -webkit-overflow-scrolling:touch;
 }
+/* 代码块内的元素允许滚动 */
+#fs .fs-body pre *,#fs .fs-body .codebody *{touch-action:auto !important;}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
-#fs .mermaid svg{max-width:100%;height:auto;}
+#fs .mermaid svg{max-width:none;height:auto;width:100%;}
+#fs .mermaid{overflow:visible !important;}
 #fs .mathpad{text-align:left;overflow-x:auto;}
 #fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:visible;}
 #fs .mermaid{width:100%;min-width:0;}
@@ -592,6 +598,9 @@ function applyFsTransform(){
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
   // 代码块反向缩放：保持原大小
   b.style.setProperty('--code-inv', (1 / fsS).toString());
+  // 内容边界扩展，防止流程图等长内容被裁切
+  b.style.minWidth = (b.offsetWidth * fsS + 200) + 'px';
+  b.style.minHeight = (b.offsetHeight * fsS + 200) + 'px';
   // 确保全链无裁切
   document.documentElement.style.overflow = 'visible';
   document.body.style.overflow = 'visible';
@@ -626,8 +635,20 @@ function bindFsGestures(){
 
   function ptArr(){ var a = []; for (var k in pts) a.push(pts[k]); return a; }
 
+  function inCodeBlock(node){
+    while (node && node !== node.ownerDocument.body){
+      if (node.tagName === 'PRE' || node.tagName === 'CODE' ||
+          (node.classList && (node.classList.contains('codebody') || node.classList.contains('log-full') || node.classList.contains('log-fold'))))
+        return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
   function onDown(e){
     if (!document.getElementById('fs').classList.contains('on')) return;
+    // 代码块内部不拦截：让它正常滚动
+    if (inCodeBlock(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
     pts[e.pointerId] = {x: e.clientX, y: e.clientY};
@@ -644,6 +665,7 @@ function bindFsGestures(){
   function onMove(e){
     if (!pts[e.pointerId]) return;
     if (!document.getElementById('fs').classList.contains('on')) return;
+    if (inCodeBlock(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
     pts[e.pointerId] = {x: e.clientX, y: e.clientY};
