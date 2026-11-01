@@ -581,6 +581,37 @@ function openCodeFs(title, codeHtml){
     + 'white-space:pre;overflow-x:auto;">' + codeHtml + '</pre>';
   document.body.appendChild(div);
   renderMath(div, true); renderCode(div, true);
+  // 缩放支持：双指捰合
+  (function(){
+    var pts = {}, baseDist = 0, baseS = 1;
+    var content = div.querySelector('pre');
+    if (!content) return;
+    content.style.transformOrigin = '0 0';
+    div.addEventListener('pointerdown', function(e){
+      pts[e.pointerId] = {x:e.clientX, y:e.clientY};
+      var ks = Object.keys(pts);
+      if (ks.length === 2){
+        var a = [pts[ks[0]], pts[ks[1]]];
+        baseDist = Math.sqrt((a[0].x-a[1].x)*(a[0].x-a[1].x)+(a[0].y-a[1].y)*(a[0].y-a[1].y)) || 1;
+        baseS = window.__codeZoom || 1;
+      }
+    }, {passive:true});
+    div.addEventListener('pointermove', function(e){
+      if (!pts[e.pointerId]) return;
+      pts[e.pointerId] = {x:e.clientX, y:e.clientY};
+      var ks = Object.keys(pts);
+      if (ks.length === 2 && baseDist > 1){
+        e.preventDefault();
+        var a = [pts[ks[0]], pts[ks[1]]];
+        var d = Math.sqrt((a[0].x-a[1].x)*(a[0].x-a[1].x)+(a[0].y-a[1].y)*(a[0].y-a[1].y)) || 1;
+        var s = Math.min(5, Math.max(0.5, baseS * (d / baseDist)));
+        window.__codeZoom = s;
+        content.style.transform = 'scale(' + s + ')';
+      }
+    }, {passive:false});
+    div.addEventListener('pointerup', function(e){ delete pts[e.pointerId]; }, {passive:true});
+    div.addEventListener('pointercancel', function(e){ delete pts[e.pointerId]; }, {passive:true});
+  })();
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
 }
