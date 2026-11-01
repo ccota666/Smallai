@@ -557,12 +557,10 @@ function openCodeFs(title, codeHtml){
   var b = document.getElementById('fsBody');
   b.innerHTML = '<div class="fs-code-wrap">' + codeHtml + '</div>';
   document.getElementById('fs').classList.add('on');
-  // 代码模式：fs-body 可滚动，无变换
-  b.style.transform = '';
-  b.style.transformOrigin = '';
-  b.style.width = '';
-  b.style.overflow = 'auto';
-  b.style.display = 'block';
+  // 代码模式：绝对定位撑满屏幕，确保可滚动
+  b.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;'
+    + 'overflow:auto;-webkit-overflow-scrolling:touch;touch-action:auto;'
+    + 'padding:0;margin:0;transform:none;';
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
@@ -571,8 +569,7 @@ function openCodeFs(title, codeHtml){
 function openFs(title, html, zoomable){
   fsLandscape = false;
   var b = document.getElementById('fsBody');
-  b.style.overflow = 'visible';
-  b.style.display = '';
+  b.style.cssText = '';
   document.getElementById('fsTtl').textContent = title; document.getElementById('fsTtl').dataset.orig = title;
   document.getElementById('rotBtn').textContent = '横屏';
   b.innerHTML = html;
