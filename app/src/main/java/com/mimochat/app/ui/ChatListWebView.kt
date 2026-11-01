@@ -369,6 +369,10 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 #fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;}
+#fs .fs-code-wrap{padding:0;overflow:auto;max-height:100%;}
+#fs .fs-code-wrap pre{margin:0;padding:12px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;}
+#fs .fs-code-wrap code{background:transparent;padding:0;font-size:13px;line-height:1.6;}
 #fs .fs-body .codebody{overflow:hidden;position:relative;}
 #fs .fs-body .codebody.clamped{max-height:calc(1.55em * 6 + 22px);}
 #fs .fs-body .codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
@@ -544,6 +548,23 @@ function askConfirm(msg, onYes){
   ok.onclick = function(){ done(true); };
   no.onclick = function(){ done(false); };
 }
+// 代码全屏：独立函数，零缩放，纯滚动
+function openCodeFs(title, codeHtml){
+  fsLandscape = false;
+  document.getElementById('fsTtl').textContent = title;
+  document.getElementById('rotBtn').textContent = '横屏';
+  var b = document.getElementById('fsBody');
+  b.innerHTML = '<div class="fs-code-wrap">' + codeHtml + '</div>';
+  document.getElementById('fs').classList.add('on');
+  // 不绑任何手势，让浏览器自然滚动
+  b.style.transform = '';
+  b.style.transformOrigin = '';
+  b.style.width = '';
+  renderMath(b, true); renderCode(b, true);
+  try { Android.setOrientation(0); } catch(e) {}
+  try { Android.setFullscreen(true); } catch(e) {}
+}
+
 function openFs(title, html, zoomable){
   fsLandscape = false;
   document.getElementById('fsTtl').textContent = title; document.getElementById('fsTtl').dataset.orig = title;
@@ -817,7 +838,8 @@ function bindBoxOps(){
           }
           real = body ? body.innerHTML : '';
           var isCode = !!(body && (body.querySelector('pre') || body.classList.contains('codebody')));
-          openFs(t, real, !isCode);
+          if (isCode) { openCodeFs(t, real); return; }
+          openFs(t, real, true);
         };
       }
     })(heads[i]);
