@@ -573,7 +573,7 @@ function openCodeFs(title, codeHtml){
     + 'this.textContent=l?\'竖屏\':\'横屏\';})()" '
     + 'style="border:1px solid rgba(128,128,128,0.4);border-radius:10px;padding:6px 14px;'
     + 'font-size:13px;cursor:pointer;">横屏</button>'
-    + '<button onclick="this.closest(\'#codeOverlay\').remove();" '
+    + '<button onclick="this.closest(\'#codeOverlay\').remove();try{Android.setFullscreen(false);Android.setOrientation(0);}catch(e){}" '
     + 'style="border:1px solid #F44336;color:#F44336;border-radius:10px;padding:6px 14px;'
     + 'font-size:13px;cursor:pointer;">退出</button>'
     + '</span></div>'
