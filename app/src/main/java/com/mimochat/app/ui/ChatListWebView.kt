@@ -385,13 +385,13 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer;}
 #fs .fs-body pre code{background:transparent;padding:0;font-size:12.5px;line-height:1.55;}
 #fs.on,#fs.on .fs-body{overflow:visible !important;}
-#fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
+#fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow:visible;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
 #fs .mermaid svg{max-width:100%;height:auto;}
 #fs .mathpad{text-align:left;overflow-x:auto;}
-#fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:visible;max-width:100%;}
-#fs .mathpad{overflow-x:auto !important;max-width:100%;}
-#fs .mathpad .katex{white-space:nowrap;}
+#fs .katex-display{margin:10px 0;overflow:visible;max-width:none;}
+#fs .mathpad{overflow:visible !important;max-width:none;}
+#fs .mathpad .katex{white-space:normal;word-break:break-all;}
 #fs .mermaid{width:100%;min-width:0;}
 #fs .fs-top .ttl{font-size:13px;color:$muted;}
 #fs .fs-body{flex:1;overflow:auto;padding:8px 16px 30px;touch-action:none;}
@@ -707,7 +707,7 @@ function bindFsGestures(){
       var rBtn = document.getElementById('resetBtn');
       if (rBtn) rBtn.style.display = (Math.abs(fsS - 1) > 0.01) ? '' : 'none';
       var ttl = document.getElementById('fsTtl');
-      if (ttl) ttl.textContent = fsS > 1.05 ? Math.round(fsS * 100) + '%' : ttl.dataset.orig || '';
+      /* 标题保持内容类型标签 */
       applyFsTransform();
     } else if (a.length === 1 && panId === e.pointerId){
       fsX += e.clientX - panX; fsY += e.clientY - panY;
