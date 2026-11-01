@@ -569,7 +569,7 @@ function openCodeFs(title, codeHtml){
     + '<span style="font-size:13px;opacity:.6;">' + esc(title) + '</span>'
     + '<span style="display:flex;gap:8px;">'
     + '<button onclick="(function(){var l=window.__codeLand=!window.__codeLand;'
-    + 'try{Android.setOrientation(l?90:0);}catch(e){}';})()" '
+    + 'try{Android.setOrientation(l?90:0);}catch(e){}})()" '
     + 'style="border:1px solid rgba(128,128,128,0.4);border-radius:10px;padding:6px 10px;cursor:pointer;">'
     + '<svg width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><rect x=\'2\' y=\'6\' width=\'20\' height=\'12\' rx=\'2\'/><path d=\'M12 2v4\'/><path d=\'M12 18v4\'/></svg></button>'
     + '<button onclick="this.closest(\'#codeOverlay\').remove();try{Android.setFullscreen(false);Android.setOrientation(0);}catch(e){}" '
