@@ -133,26 +133,24 @@ fun ConversationListScreen(
                                     onOpenChat(id)
                                 }
                             },
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF1A1A1A),
-                            modifier = Modifier.padding(end = 8.dp)
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF1A1A1A)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Icon(
                                     Icons.Rounded.Add,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(4.dp))
                                 Text(
                                     "新对话",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White
                                 )
                             }
                         }
@@ -263,12 +261,7 @@ fun ConversationListScreen(
 
                 if (!selectionMode) {
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        AppSecondaryButton(
-                            onClick = onOpenSettings,
-                            text = "设置",
-                            icon = Icons.Rounded.Settings,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        
                     }
                 }
             }

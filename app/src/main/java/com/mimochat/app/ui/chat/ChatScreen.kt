@@ -502,7 +502,7 @@ fun ChatScreen(
                 }
 
                 // 回到底部按钮：浮在输入栏上方
-                if (!webViewAtBottom && messages.isNotEmpty() && !chatFullscreen) {
+                if (hasNewBelow && messages.isNotEmpty() && !chatFullscreen) {
                     JumpToBottomButton(
                         flash = hasNewBelow || generating,
                         onClick = {
@@ -951,9 +951,8 @@ private fun JumpToBottomButton(
         label = "flash"
     )
 
-    val colors = MaterialTheme.colorScheme
-    val container = if (flash) colors.primary else colors.surfaceVariant
-    val content = if (flash) colors.onPrimary else colors.onSurfaceVariant
+    val container = if (flash) Color(0xFF1A1A1A) else Color.White
+    val content = if (flash) Color.White else Color(0xFF333333)
     val alpha = if (flash) flashAlpha else 1f
 
     Surface(
