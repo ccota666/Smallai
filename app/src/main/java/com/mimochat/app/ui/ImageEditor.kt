@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -315,22 +316,30 @@ private fun CropPreview(
         val k = minOf(maxW / imgW, maxH / imgH)
         val dispW = (imgW * k).toInt().coerceAtLeast(1)
         val dispH = (imgH * k).toInt().coerceAtLeast(1)
+        // 扫描区域加 24dp 扩展：手指可伸到图片外也能拖裁剪框
+        val ext = with(androidx.compose.ui.platform.LocalDensity.current){ 24.dp.roundToPx() }
         Box(
             Modifier
-                .size(with(androidx.compose.ui.platform.LocalDensity.current){dispW.toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){dispH.toDp()})
+                .size(with(androidx.compose.ui.platform.LocalDensity.current){(dispW+ext*2).toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){(dispH+ext*2).toDp()})
         ) {
+        Box(Modifier.offset(x = with(androidx.compose.ui.platform.LocalDensity.current){ext.toDp()}, y = with(androidx.compose.ui.platform.LocalDensity.current){ext.toDp()})
+            .size(with(androidx.compose.ui.platform.LocalDensity.current){dispW.toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){dispH.toDp()})) {
         Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        }
 
-        // 透明手势层：确保拿到所有拖拽
+        // 透明手势层：覆盖扫描区域（含扩展区）
         Box(
             Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .pointerInput(ext, dispW, dispH) {
                     detectDragGestures(
                         onDragStart = { pos ->
                             onDragState(true)
-                            val nx = pos.x / size.width
-                            val ny = pos.y / size.height
+                            // 坐标相对图片区域（排除扩展区），允许超出 0~1
+                            val imgLeft = ext.toFloat()
+                            val imgTop = ext.toFloat()
+                            val nx = (pos.x - imgLeft) / dispW.toFloat()
+                            val ny = (pos.y - imgTop) / dispH.toFloat()
                             dragStart = Offset(nx, ny)
                             cropAtStart = crop
                             val cur = cropState.value
@@ -340,8 +349,8 @@ private fun CropPreview(
                         },
                         onDrag = { change, _ ->
                             change.consume()
-                            val nx = change.position.x / size.width
-                            val ny = change.position.y / size.height
+                            val nx = (change.position.x - ext.toFloat()) / dispW.toFloat()
+                            val ny = (change.position.y - ext.toFloat()) / dispH.toFloat()
                             val dx = nx - dragStart.x
                             val dy = ny - dragStart.y
                             val st = cropAtStart
