@@ -316,30 +316,29 @@ private fun CropPreview(
         val k = minOf(maxW / imgW, maxH / imgH)
         val dispW = (imgW * k).toInt().coerceAtLeast(1)
         val dispH = (imgH * k).toInt().coerceAtLeast(1)
-        // 扫描区域加 24dp 扩展：手指可伸到图片外也能拖裁剪框
-        val ext = with(androidx.compose.ui.platform.LocalDensity.current){ 24.dp.roundToPx() }
+        // 图片+扩展手势区域：外层比图片大 24dp
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val extPx = with(density) { 24.dp.roundToPx() }
         Box(
             Modifier
-                .size(with(androidx.compose.ui.platform.LocalDensity.current){(dispW+ext*2).toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){(dispH+ext*2).toDp()})
+                .size(with(density){(dispW + extPx * 2).toDp()}, with(density){(dispH + extPx * 2).toDp()})
         ) {
-        Box(Modifier.offset(x = with(androidx.compose.ui.platform.LocalDensity.current){ext.toDp()}, y = with(androidx.compose.ui.platform.LocalDensity.current){ext.toDp()})
-            .size(with(androidx.compose.ui.platform.LocalDensity.current){dispW.toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){dispH.toDp()})) {
-        Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        // 图片居中放置
+        Box(Modifier.offset(x = with(density){extPx.toDp()}, y = with(density){extPx.toDp()})
+            .size(with(density){dispW.toDp()}, with(density){dispH.toDp()})) {
+            Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
         }
 
-        // 透明手势层：覆盖扫描区域（含扩展区）
+        // 手势层覆盖整个区域（含扩展区）
         Box(
             Modifier
                 .fillMaxSize()
-                .pointerInput(ext, dispW, dispH) {
+                .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = { pos ->
                             onDragState(true)
-                            // 坐标相对图片区域（排除扩展区），允许超出 0~1
-                            val imgLeft = ext.toFloat()
-                            val imgTop = ext.toFloat()
-                            val nx = (pos.x - imgLeft) / dispW.toFloat()
-                            val ny = (pos.y - imgTop) / dispH.toFloat()
+                            val nx = (pos.x - extPx) / dispW.toFloat()
+                            val ny = (pos.y - extPx) / dispH.toFloat()
                             dragStart = Offset(nx, ny)
                             cropAtStart = crop
                             val cur = cropState.value
@@ -349,8 +348,8 @@ private fun CropPreview(
                         },
                         onDrag = { change, _ ->
                             change.consume()
-                            val nx = (change.position.x - ext.toFloat()) / dispW.toFloat()
-                            val ny = (change.position.y - ext.toFloat()) / dispH.toFloat()
+                            val nx = (change.position.x - extPx) / dispW.toFloat()
+                            val ny = (change.position.y - extPx) / dispH.toFloat()
                             val dx = nx - dragStart.x
                             val dy = ny - dragStart.y
                             val st = cropAtStart
@@ -407,13 +406,13 @@ private fun CropPreview(
                 }
         )
 
-        // 选区蒙层 + 边框
+        // 选区蒙层 + 边框（坐标基于图片区域，排除扩展区）
         Canvas(Modifier.fillMaxSize()) {
             val c = crop ?: return@Canvas
-            val left = c.first.first * size.width
-            val top = c.first.second * size.height
-            val right = c.second.first * size.width
-            val bottom = c.second.second * size.height
+            val left = extPx + c.first.first * dispW
+            val top = extPx + c.first.second * dispH
+            val right = extPx + c.second.first * dispW
+            val bottom = extPx + c.second.second * dispH
             drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, 0f), Size(size.width, top))
             drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, bottom), Size(size.width, size.height - bottom))
             drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, top), Size(left, bottom - top))
