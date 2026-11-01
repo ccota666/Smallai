@@ -553,20 +553,27 @@ function askConfirm(msg, onYes){
 }
 // 代码全屏：独立函数，零缩放，纯滚动
 function openCodeFs(title, codeHtml){
-  fsLandscape = false;
-  document.getElementById('fsTtl').textContent = title;
-  document.getElementById('rotBtn').textContent = '横屏';
-  var b = document.getElementById('fsBody');
-  b.innerHTML = codeHtml;
-  document.getElementById('fs').classList.add('on');
-  document.getElementById('fs').classList.add('code-mode');
-  // 代码模式：强制 block 布局 + 明确高度 + 可滚动
-  // 代码模式：fs-body 绝对定位撑满，自己滚动
-  b.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;'
-    + 'overflow:auto;display:block;flex:none;'
-    + 'touch-action:auto;padding:8px 12px 20px;transform:none;'
-    + '-webkit-overflow-scrolling:touch;';
-  renderMath(b, true); renderCode(b, true);
+  // 独立覆盖层：完全绕开 fs-body 的 CSS 冲突
+  var fs = document.getElementById('fs');
+  fs.classList.remove('code-mode');
+  var old = document.getElementById('codeOverlay');
+  if (old) old.remove();
+  var div = document.createElement('div');
+  div.id = 'codeOverlay';
+  div.style.cssText = 'position:fixed;inset:0;background:' + getComputedStyle(fs).backgroundColor + ';'
+    + 'z-index:10001;overflow:auto;-webkit-overflow-scrolling:touch;'
+    + 'padding:56px 12px 20px;box-sizing:border-box;';
+  div.innerHTML = '<div style="position:fixed;top:0;left:0;right:0;z-index:10002;'
+    + 'display:flex;justify-content:space-between;align-items:center;'
+    + 'padding:36px 16px 4px;box-sizing:border-box;">'
+    + '<span style="font-size:13px;opacity:.6;">' + esc(title) + '</span>'
+    + '<button onclick="this.parentElement.parentElement.remove();" '
+    + 'style="border:1px solid rgba(128,128,128,0.4);border-radius:10px;padding:6px 14px;'
+    + 'font-size:13px;cursor:pointer;">退出</button></div>'
+    + '<pre style="margin:0;padding:12px;font-size:13px;line-height:1.6;'
+    + 'white-space:pre;overflow-x:auto;">' + codeHtml + '</pre>';
+  document.body.appendChild(div);
+  renderMath(div, true); renderCode(div, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
 }
