@@ -72,10 +72,11 @@ import com.mimochat.app.ui.AppSlider
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     var settingsPage by remember { mutableStateOf(-1) }
-    androidx.activity.compose.BackHandler(enabled = settingsPage != -1) {
-        settingsPage = -1
-    }
     var showScreenQA by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA) {
+        if (showScreenQA) showScreenQA = false
+        else settingsPage = -1
+    }
     if (showScreenQA) {
         com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
         return
