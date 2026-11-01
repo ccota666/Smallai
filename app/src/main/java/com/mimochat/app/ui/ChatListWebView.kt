@@ -366,19 +366,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
 #fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
-#fs .fs-body pre,#fs .fs-body .codebody,#fs .fs-body .box pre{
-  overflow-x:auto !important;overflow-y:auto !important;
-  max-height:65vh;
-  -webkit-overflow-scrolling:touch;
-}
-#fs .fs-body pre *,#fs .fs-body .codebody *{touch-action:auto !important;}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
-
+#fs.on,#fs.on .fs-body{overflow:visible !important;}
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
 #fs .mermaid svg{max-width:100%;height:auto;}
-#fs .mermaid{overflow-x:auto;}
 #fs .mathpad{text-align:left;overflow-x:auto;}
 #fs .katex-display{margin:10px 0;overflow-x:auto;overflow-y:visible;}
 #fs .mermaid{width:100%;min-width:0;}
@@ -589,14 +582,8 @@ function fsBody(){ return document.getElementById('fsBody'); }
 function applyFsTransform(){
   var b = fsBody();
   if (!b) return;
-  b.style.transformOrigin = '0 0';
+  b.style.transformOrigin = '0 0'; document.documentElement.style.overflow='visible'; document.body.style.overflow='visible';
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
-  // 代码块反向缩放：保持原大小
-  // 内容边界扩展，防止流程图等长内容被裁切
-  b.style.width = Math.ceil(b.scrollWidth * fsS + 100) + 'px';
-  // 确保全链无裁切
-  document.documentElement.style.overflow = 'visible';
-  document.body.style.overflow = 'visible';
 }
 
 function resetFsView(){
@@ -627,20 +614,8 @@ function bindFsGestures(){
 
   function ptArr(){ var a = []; for (var k in pts) a.push(pts[k]); return a; }
 
-  function inCodeBlock(node){
-    while (node && node !== node.ownerDocument.body){
-      if (node.tagName === 'PRE' || node.tagName === 'CODE' ||
-          (node.classList && (node.classList.contains('codebody') || node.classList.contains('log-full') || node.classList.contains('log-fold'))))
-        return true;
-      node = node.parentElement;
-    }
-    return false;
-  }
-
   function onDown(e){
     if (!document.getElementById('fs').classList.contains('on')) return;
-    // 代码块内部不拦截：让它正常滚动
-    if (inCodeBlock(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
     pts[e.pointerId] = {x: e.clientX, y: e.clientY};
@@ -657,7 +632,6 @@ function bindFsGestures(){
   function onMove(e){
     if (!pts[e.pointerId]) return;
     if (!document.getElementById('fs').classList.contains('on')) return;
-    if (inCodeBlock(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
     pts[e.pointerId] = {x: e.clientX, y: e.clientY};
@@ -673,15 +647,13 @@ function bindFsGestures(){
       var fsEl = document.getElementById('fs');
       if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
       var rBtn = document.getElementById('resetBtn');
-      if (rBtn) rBtn.style.display = (fsS > 1.01 || fsS < 0.99 || Math.abs(fsX) > 1 || Math.abs(fsY) > 1) ? '' : 'none';
+      if (rBtn) rBtn.style.display = fsS > 1.05 ? '' : 'none';
       var ttl = document.getElementById('fsTtl');
-      if (ttl) ttl.textContent = (fsS > 1.01 || fsS < 0.99) ? Math.round(fsS * 100) + '%' : (ttl.dataset.orig || '');
+      if (ttl) ttl.textContent = fsS > 1.05 ? Math.round(fsS * 100) + '%' : ttl.dataset.orig || '';
       applyFsTransform();
-    } else if (a.length === 1 && panId === e.pointerId){
+    } else if (a.length === 1 && fsS > 1.01 && panId === e.pointerId){
       fsX += e.clientX - panX; fsY += e.clientY - panY;
       panX = e.clientX; panY = e.clientY;
-      var rBtn2 = document.getElementById('resetBtn');
-      if (rBtn2) rBtn2.style.display = (fsS > 1.01 || fsS < 0.99 || Math.abs(fsX) > 1 || Math.abs(fsY) > 1) ? '' : 'none';
       applyFsTransform();
     }
   }
