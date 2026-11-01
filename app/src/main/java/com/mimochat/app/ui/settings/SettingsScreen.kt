@@ -86,6 +86,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var baseUrl by remember { mutableStateOf(settings.baseUrl) }
     var models by remember { mutableStateOf(settings.models) }
     var systemPrompt by remember { mutableStateOf(settings.systemPrompt) }
+    var compressPrompt by remember(settings.compressPrompt) { mutableStateOf(settings.compressPrompt) }
 
     LaunchedEffect(settings.apiKey) { apiKey = settings.apiKey }
     LaunchedEffect(settings.baseUrl) { baseUrl = settings.baseUrl }
@@ -117,140 +118,116 @@ fun SettingsScreen(onBack: () -> Unit) {
                 SettingsNavCard("屏幕问答", "悬浮球截屏") { showScreenQA = true }
                 SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
                 SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
-            }
-            if (settingsPage == 0) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
-                    Text("API 连接与模型", style = MaterialTheme.typography.titleLarge)
-                }
-                Spacer(Modifier.height(8.dp))
-                if (settingsPage == -1) {
-                SettingsNavCard("API 连接与模型", "") { settingsPage = 0 }
-                SettingsNavCard("屏幕问答", "") { showScreenQA = true }
-                SettingsNavCard("外观", "") { settingsPage = 2 }
-                SettingsNavCard("高级", "") { settingsPage = 3 }
                 return@Column
             }
-            if (settingsPage != 0) return@Column
-                        // Base URL 预设 + 自定义
-            Text("Base URL", style = MaterialTheme.typography.labelLarge)
-            val urlPresets = listOf(
-                "https://api.xiaomimimo.com/v1" to "按量付费 API",
-                "https://token-plan-cn.xiaomimimo.com/v1" to "Token Plan（cn）"
-            )
-            urlPresets.forEach { (u, name) ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = baseUrl.trimEnd('/') == u,
-                        onClick = { baseUrl = u; vm.setBaseUrl(u) }
-                    )
-                    Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            Text("也可以直接改下面的地址（自定义）", style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it; vm.setApiKey(it) },
-                label = { Text("API Key") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = baseUrl,
-                onValueChange = { baseUrl = it; vm.setBaseUrl(it) },
-                label = { Text("Base URL") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                "Key 获取：platform.xiaomimimo.com → API Keys（按量付费 sk- 或 Token Plan tp-/ttp-）",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
-                        OutlinedTextField(
-                value = models,
-                onValueChange = { models = it; vm.setModels(it) },
-                label = { Text("模型列表（逗号分隔）") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                "新模型上线后在此追加 ID 即可，无需改代码。",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            ModelDropdown(
-                models = modelList,
-                current = settings.model,
-                onSelect = { vm.setModel(it) }
-            )
-
-            }
-            if (settingsPage == 2) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
-                    Text("外观", style = MaterialTheme.typography.titleLarge)
-                }
-                Spacer(Modifier.height(8.dp))
-                            androidx.compose.material3.OutlinedButton(
-                onClick = { showScreenQA = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("屏幕问答 · 悬浮球截屏提问")
-            }
-            if (settingsPage != 2) return@Column
-
-                        SettingsSectionCard {
-                ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }
-                FontSizeSlider(settings.fontSize) { vm.setFontSize(it) }
-                BoldColorPicker(settings.boldColor) { vm.setBoldColor(it) }
-            }
-
-            }
-            if (settingsPage == 3) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
-                    Text("高级", style = MaterialTheme.typography.titleLarge)
-                }
-                Spacer(Modifier.height(8.dp))
-                if (settingsPage != 3) return@Column
-                        SettingsSectionCard {
-                ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
-            }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("超出历史条数时压缩上文", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = settings.compressOverflow,
-                    onCheckedChange = { scope.launch { vm.setCompressOverflow(it) } }
+            // 页面返回按钮 + 标题
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
+                Text(
+                    when (settingsPage) {
+                        0 -> "API 连接与模型"
+                        2 -> "外观"
+                        3 -> "高级"
+                        else -> "设置"
+                    },
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
-            Text(
-                "在你下一次提问之前把更早的对话压成「前情提要」。对话越长等待越久。",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            var compressPrompt by remember(settings.compressPrompt) { mutableStateOf(settings.compressPrompt) }
-            OutlinedTextField(
-                value = compressPrompt,
-                onValueChange = {
-                    compressPrompt = it
-                    vm.setCompressPrompt(it)
-                },
-                label = { Text("压缩提示词") },
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Spacer(Modifier.height(12.dp))
 
-                        OutlinedTextField(
-                value = systemPrompt,
-                onValueChange = { systemPrompt = it; vm.setSystemPrompt(it) },
-                label = { Text("系统提示词（可选）") },
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (settingsPage == 0) {
+                SettingsSectionCard {
+                    Text("Base URL", style = MaterialTheme.typography.labelLarge)
+                    val urlPresets = listOf(
+                        "https://api.xiaomimimo.com/v1" to "按量付费 API",
+                        "https://token-plan-cn.xiaomimimo.com/v1" to "Token Plan（cn）"
+                    )
+                    urlPresets.forEach { (u, name) ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = baseUrl.trimEnd('/') == u,
+                                onClick = { baseUrl = u; vm.setBaseUrl(u) }
+                            )
+                            Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = apiKey,
+                        onValueChange = { apiKey = it; vm.setApiKey(it) },
+                        label = { Text("API Key") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = baseUrl,
+                        onValueChange = { baseUrl = it; vm.setBaseUrl(it) },
+                        label = { Text("Base URL") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        "Key 获取：platform.xiaomimimo.com → API Keys",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                SettingsSectionCard {
+                    OutlinedTextField(
+                        value = models,
+                        onValueChange = { models = it; vm.setModels(it) },
+                        label = { Text("模型列表（逗号分隔）") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    ModelDropdown(
+                        models = modelList,
+                        current = settings.model,
+                        onSelect = { vm.setModel(it) }
+                    )
+                }
+            }
+
+            if (settingsPage == 2) {
+                SettingsSectionCard {
+                    ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }
+                    FontSizeSlider(settings.fontSize) { vm.setFontSize(it) }
+                    BoldColorPicker(settings.boldColor) { vm.setBoldColor(it) }
+                }
+            }
+
+            if (settingsPage == 3) {
+                SettingsSectionCard {
+                    ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("超出历史条数时压缩上文", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = settings.compressOverflow,
+                            onCheckedChange = { scope.launch { vm.setCompressOverflow(it) } }
+                        )
+                    }
+                    OutlinedTextField(
+                        value = compressPrompt,
+                        onValueChange = {
+                            compressPrompt = it
+                            vm.setCompressPrompt(it)
+                        },
+                        label = { Text("压缩提示词") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                SettingsSectionCard {
+                    OutlinedTextField(
+                        value = systemPrompt,
+                        onValueChange = { systemPrompt = it; vm.setSystemPrompt(it) },
+                        label = { Text("系统提示词（可选）") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
