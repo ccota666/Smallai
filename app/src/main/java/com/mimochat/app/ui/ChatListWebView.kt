@@ -544,7 +544,7 @@ function askConfirm(msg, onYes){
   ok.onclick = function(){ done(true); };
   no.onclick = function(){ done(false); };
 }
-function openFs(title, html){
+function openFs(title, html, zoomable){
   fsLandscape = false;
   document.getElementById('fsTtl').textContent = title; document.getElementById('fsTtl').dataset.orig = title;
   document.getElementById('rotBtn').textContent = '横屏';
@@ -562,8 +562,8 @@ function openFs(title, html){
     }
   }, 50);
   renderMath(b, true); renderCode(b, true);
-  // 只有非纯代码内容才绑定缩放
-  if (!b.querySelector('pre') || b.querySelector('.mathpad, .mmpad, .mermaid, .content')) {
+  // 只有可缩放内容（公式/图表）才绑定缩放手势
+  if (zoomable !== false) {
     bindFsGestures();
   }
   try { if (window.mermaid && b.querySelector('.mermaid'))
@@ -816,7 +816,8 @@ function bindBoxOps(){
             return;
           }
           real = body ? body.innerHTML : '';
-          openFs(t, real);
+          var isCode = !!(body && (body.querySelector('pre') || body.classList.contains('codebody')));
+          openFs(t, real, !isCode);
         };
       }
     })(heads[i]);
