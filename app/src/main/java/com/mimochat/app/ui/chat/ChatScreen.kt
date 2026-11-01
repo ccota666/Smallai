@@ -314,8 +314,10 @@ fun ChatScreen(
     var webViewAtBottom by remember { mutableStateOf(true) }
     var jumpMessageId by remember { mutableStateOf(0L) }
     var artifactNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    var artifactRefreshTick by remember { mutableStateOf(0) }
     // 加载产物列表（智能体生成的文件，排除 uploads/ 和隐藏文件）
-    LaunchedEffect(conversationId) {
+    // 消息变化时刷新（任务完成后立即可见）
+    LaunchedEffect(conversationId, messages.size, artifactRefreshTick) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val dir = java.io.File("/storage/emulated/0/Download/MiMoChat", "conv_$conversationId")
             val names = dir.listFiles()?.filter {
@@ -400,6 +402,30 @@ fun ChatScreen(
                 temperature = settings.temperature,
                 questions = messages.filter { it.role == "user" && it.content.isNotBlank() },
                 artifacts = artifactNames,
+                onOpenArtifact = { name ->
+                    scope.launch {
+                        val dir = java.io.File("/storage/emulated/0/Download/MiMoChat", "conv_$conversationId")
+                        val file = java.io.File(dir, name)
+                        if (file.exists()) {
+                            try {
+                                val uri = androidx.core.content.FileProvider.getUriForFile(
+                                    context, context.packageName + ".fileprovider", file
+                                )
+                                val mime = context.contentResolver.getType(uri)
+                                    ?: android.webkit.MimeTypeMap.getSingleton()
+                                        .getMimeTypeFromExtension(file.extension.lowercase())
+                                    ?: "*/*"
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, mime)
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "无法打开：${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
                 agentMode = agentMode,
                 onOpenList = onOpenList,
                 onSelectModel = { vm.setModel(it) },
@@ -676,6 +702,7 @@ private fun ChatTopBar(
     temperature: Float,
     questions: List<ChatMessage>,
     artifacts: List<String> = emptyList(),
+    onOpenArtifact: (String) -> Unit = {},
     agentMode: Boolean = false,
     onOpenList: () -> Unit,
     onSelectModel: (String) -> Unit,
@@ -833,7 +860,10 @@ private fun ChatTopBar(
                                             )
                                         }
                                     },
-                                    onClick = { questionsMenuOpen = false }
+                                    onClick = {
+                                        questionsMenuOpen = false
+                                        onOpenArtifact(name)
+                                    }
                                 )
                             }
                         }
@@ -848,24 +878,12 @@ private fun ChatTopBar(
                     icon = Icons.Rounded.Settings,
                     contentDescription = "聊天设置"
                 )
-                if (agentMode) {
-                    // 右上角蓝点
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 1.dp, y = 1.dp)
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .border(1.5.dp, MaterialTheme.colorScheme.background, CircleShape)
-                    )
-                }
             }
             DropdownMenu(expanded = settingsMenuOpen, onDismissRequest = { settingsMenuOpen = false }) {
                 Column(Modifier.widthIn(min = 260.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (agentMode) {
                         Text(
-                            "⚠️ 智能体模式下此处设置不生效",
+                            "此处设置对智能体模式不生效",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 8.dp)

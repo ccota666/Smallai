@@ -641,7 +641,9 @@ function bindFsGestures(){
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
       if (s1 !== s0){
         fsX = midX - (midX - fsX) * (s1 / s0);
-        fsY = midY - (midY - fsY) * (s1 / s0);
+        var centerY = window.innerHeight / 2;
+        var blendY = midY * 0.5 + centerY * 0.5;
+        fsY = blendY - (blendY - fsY) * (s1 / s0);
         fsS = s1;
       }
       pinchDist = d;

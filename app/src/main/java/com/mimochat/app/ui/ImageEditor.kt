@@ -440,7 +440,7 @@ private fun hitTest(
 ): String {
     if (crop == null) return "Move"
     val (lt, rb) = crop
-    val edge = 0.12f
+    val edge = 0.18f
     val nearL = kotlin.math.abs(nx - lt.first) < edge
     val nearR = kotlin.math.abs(nx - rb.first) < edge
     val nearT = kotlin.math.abs(ny - lt.second) < edge
