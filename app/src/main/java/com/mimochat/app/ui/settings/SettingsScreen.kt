@@ -292,7 +292,6 @@ private fun BoldColorPicker(current: Int, onChange: (Int) -> Unit) {
     val COLORFUL = (0x5F5F5F)  // 五颜六色：按分段换色
     val presets = listOf(
         0 to "主题色",
-        RAINBOW to "彩虹",
         COLORFUL to "五彩",
         android.graphics.Color.parseColor("#E67E22") to "橙",
         android.graphics.Color.parseColor("#C0392B") to "红",

@@ -349,9 +349,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .content a{color:var(--ac);}
 .sec-0{color:#2F6FED;} .sec-1{color:#C678DD;} .sec-2{color:#E67E22;}
 .sec-3{color:#27AE60;} .sec-4{color:#E74C3C;} .sec-5{color:#16A085;}
-.content strong.rainbow{background:linear-gradient(90deg,
-  #FF6B6B,#FEC89A,#95D5B2,#4D96FF,#B197FC);
-  -webkit-background-clip:text;background-clip:text;color:transparent;}
+
 .content a{color:var(--ac);text-decoration:underline;}
 .content img{max-width:100%;border-radius:10px;}
 /* 全屏层 */
@@ -922,7 +920,7 @@ function replaceBold(t){
     var open = '<strong';
     var mode = (typeof BOLD_MODE !== 'undefined') ? BOLD_MODE : 'theme';
     if (mode === 'rainbow') {
-      open += ' class="rainbow"';
+      /* rainbow disabled */;
     } else if (mode === 'colorful') {
       // 按当前 h/--- 分段序号取色
       var idx = (window.__secIdx | 0) % SEC_COLORS.length;
@@ -1144,7 +1142,7 @@ function blockMd(src){
       var sc = (window.__secIdx | 0) % 6;
       var hstyle = '';
       var bmH = (typeof BOLD_MODE !== 'undefined') ? BOLD_MODE : 'theme';
-      if (bmH === 'colorful' || bmH === 'rainbow') {
+      if (bmH === 'colorful') {
         hstyle = ' style="color:' + SEC_COLORS[sc] + '"';
       } else if (bmH && bmH !== 'theme' && bmH !== 'inherit') {
         hstyle = ' style="color:' + bmH + '"';

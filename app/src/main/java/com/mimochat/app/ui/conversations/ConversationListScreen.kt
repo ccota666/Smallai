@@ -126,30 +126,35 @@ fun ConversationListScreen(
                                 .height(48.dp)
                         )
                     } else {
-                        TextButton(
+                        Surface(
                             onClick = {
                                 scope.launch {
                                     val id = vm.newConversation()
                                     onOpenChat(id)
                                 }
                             },
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 10.dp, vertical = 4.dp
-                            )
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFF1A1A1A),
+                            modifier = Modifier.padding(end = 8.dp)
                         ) {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                "新对话",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Add,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "新对话",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 },
@@ -161,6 +166,11 @@ fun ConversationListScreen(
                             contentDescription = "关闭搜索"
                         )
                     } else {
+                        AppIconButton(
+                            onClick = { onOpenSettings?.invoke() },
+                            icon = Icons.Rounded.Settings,
+                            contentDescription = "设置"
+                        )
                         AppIconButton(
                             onClick = { searchMode = true },
                             icon = Icons.Rounded.Search,
