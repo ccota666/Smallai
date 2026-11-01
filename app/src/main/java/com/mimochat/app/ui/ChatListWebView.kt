@@ -359,6 +359,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs.zoomed{overflow:visible;}
 #fs.on{display:flex;touch-action:none;overflow:visible;}
 #fs.on *,#fs.on *::before,#fs.on *::after{touch-action:none;}
+/* 代码模式：恢复原生滚动 */
+#fs.code-mode,#fs.code-mode *,#fs.code-mode *::before,#fs.code-mode *::after{
+  touch-action:auto !important;}
 #fs .fs-top{display:flex;justify-content:space-between;align-items:center;
   padding:36px 16px 4px;gap:10px;flex-wrap:wrap;
   padding-top:calc(36px + env(safe-area-inset-top,0px));
@@ -556,6 +559,7 @@ function openCodeFs(title, codeHtml){
   var b = document.getElementById('fsBody');
   b.innerHTML = codeHtml;
   document.getElementById('fs').classList.add('on');
+  document.getElementById('fs').classList.add('code-mode');
   // 代码模式：强制 block 布局 + 明确高度 + 可滚动
   b.style.cssText = 'overflow:auto;touch-action:auto;padding:8px 12px 40px;transform:none;'
     + 'display:block;max-height:none;height:auto;';
@@ -571,6 +575,7 @@ function openFs(title, html, zoomable){
   fsLandscape = false;
   var b = document.getElementById('fsBody');
   b.style.cssText = '';
+  document.getElementById('fs').classList.remove('code-mode');
   document.getElementById('fs').style.overflow = '';
   document.getElementById('fs').style.touchAction = '';
   document.getElementById('fsTtl').textContent = title; document.getElementById('fsTtl').dataset.orig = title;
@@ -717,6 +722,7 @@ function bindFsGestures(){
 
 function closeFs(){
   document.getElementById('fs').classList.remove('on');
+  document.getElementById('fs').classList.remove('code-mode');
   document.getElementById('fsBody').innerHTML = '';
   resetFsView();
   try { Android.setOrientation(0); } catch(e) {}
