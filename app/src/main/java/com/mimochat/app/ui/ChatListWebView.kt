@@ -369,11 +369,10 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 #fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;}
-#fs .fs-code-wrap{padding:0;overflow:auto;flex:1;min-height:0;
-  -webkit-overflow-scrolling:touch;touch-action:auto !important;}
-#fs .fs-code-wrap pre{margin:0;padding:12px;min-width:fit-content;}
-#fs .fs-code-wrap code{background:transparent;padding:0;font-size:13px;line-height:1.6;
-  white-space:pre;}
+/* 代码全屏：fs-body 直接滚动 */
+#fs .fs-body pre{margin:0;padding:12px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;}
+#fs .fs-body pre code{white-space:pre;font-size:13px;line-height:1.6;}
 #fs .fs-body .codebody{overflow:hidden;position:relative;}
 #fs .fs-body .codebody.clamped{max-height:calc(1.55em * 6 + 22px);}
 #fs .fs-body .codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
@@ -555,12 +554,14 @@ function openCodeFs(title, codeHtml){
   document.getElementById('fsTtl').textContent = title;
   document.getElementById('rotBtn').textContent = '横屏';
   var b = document.getElementById('fsBody');
-  b.innerHTML = '<div class="fs-code-wrap">' + codeHtml + '</div>';
+  b.innerHTML = codeHtml;
   document.getElementById('fs').classList.add('on');
-  // 代码模式：不覆盖 display，保持 flex 布局让 fs-code-wrap 约束高度滚动
+  // 代码模式：fs-body 可滚动
   b.style.transform = '';
   b.style.transformOrigin = '';
   b.style.width = '';
+  b.style.overflow = 'auto';
+  b.style.touchAction = 'auto';
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
