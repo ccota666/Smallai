@@ -557,21 +557,10 @@ function openCodeFs(title, codeHtml){
   var b = document.getElementById('fsBody');
   b.innerHTML = '<div class="fs-code-wrap">' + codeHtml + '</div>';
   document.getElementById('fs').classList.add('on');
-  // 代码模式：直接设明确高度，不依赖 flex 布局
+  // 代码模式：不覆盖 display，保持 flex 布局让 fs-code-wrap 约束高度滚动
   b.style.transform = '';
   b.style.transformOrigin = '';
   b.style.width = '';
-  b.style.overflow = 'auto';
-  b.style.height = (window.innerHeight - 56) + 'px';
-  b.style.padding = '0';
-  b.style.touchAction = 'auto';
-  // 内部包装层也需要可滚动
-  var wrap = b.querySelector('.fs-code-wrap');
-  if (wrap) {
-    wrap.style.overflow = 'auto';
-    wrap.style.height = '100%';
-    wrap.style.touchAction = 'auto';
-  }
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
