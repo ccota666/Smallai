@@ -567,9 +567,16 @@ function openCodeFs(title, codeHtml){
     + 'display:flex;justify-content:space-between;align-items:center;'
     + 'padding:36px 16px 4px;box-sizing:border-box;">'
     + '<span style="font-size:13px;opacity:.6;">' + esc(title) + '</span>'
-    + '<button onclick="this.parentElement.parentElement.remove();" '
+    + '<span style="display:flex;gap:8px;">'
+    + '<button id="codeRotBtn" onclick="(function(){var l=window.__codeLand=!window.__codeLand;'
+    + 'try{Android.setOrientation(l?90:0);}catch(e){}'
+    + 'this.textContent=l?'竖屏':'横屏';})()" '
     + 'style="border:1px solid rgba(128,128,128,0.4);border-radius:10px;padding:6px 14px;'
-    + 'font-size:13px;cursor:pointer;">退出</button></div>'
+    + 'font-size:13px;cursor:pointer;">横屏</button>'
+    + '<button onclick="this.closest('#codeOverlay').remove();" '
+    + 'style="border:1px solid #F44336;color:#F44336;border-radius:10px;padding:6px 14px;'
+    + 'font-size:13px;cursor:pointer;">退出</button>'
+    + '</span></div>'
     + '<pre style="margin:0;padding:12px;font-size:13px;line-height:1.6;'
     + 'white-space:pre;overflow-x:auto;">' + codeHtml + '</pre>';
   document.body.appendChild(div);
