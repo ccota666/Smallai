@@ -557,9 +557,9 @@ function openCodeFs(title, codeHtml){
   b.innerHTML = codeHtml;
   document.getElementById('fs').classList.add('on');
   // 代码模式：强制 block 布局 + 明确高度 + 可滚动
-  b.style.cssText = 'display:block;overflow:auto;touch-action:auto;'
-    + 'height:calc(100vh - 56px);padding:0;transform:none;'
-    + '-webkit-overflow-scrolling:touch;';
+  b.style.cssText = 'position:absolute;top:56px;left:0;right:0;bottom:0;'
+    + 'overflow:auto;touch-action:auto;padding:0 0 20px 0;transform:none;'
+    + '-webkit-overflow-scrolling:touch;display:block;';
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
