@@ -477,9 +477,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   <div class="fs-top">
     <span class="ttl" id="fsTtl"></span>
     <span class="fs-ops">
-      <button onclick="resetFsView()">归位</button>
+      <button onclick="resetFsView()" style="border-color:#4CAF50;color:#4CAF50">归位</button>
       <button id="rotBtn" onclick="toggleRotate()">横屏</button>
-      <button onclick="closeFs()">退出</button>
+      <button onclick="closeFs()" style="border-color:#F44336;color:#F44336">退出</button>
     </span>
   </div>
   <div class="fs-body" id="fsBody"></div>
@@ -625,9 +625,10 @@ function bindFsGestures(){
       var d = distOf(e.touches);
       var s1 = pinchS0 * (d / pinchDist);
       s1 = Math.min(8, Math.max(0.3, s1));
-      // 捰合中点为锚点
-      var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      // 捰合中点为锚点（坐标相对 body）
+      var bx = el.offsetLeft, by = el.offsetTop;
+      var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - bx;
+      var my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - by;
       fsX = mx - (mx - fsX) * (s1 / fsS);
       fsY = my - (my - fsY) * (s1 / fsS);
       fsS = s1;
