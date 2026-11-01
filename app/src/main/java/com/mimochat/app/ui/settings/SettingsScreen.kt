@@ -196,8 +196,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("外观", style = MaterialTheme.typography.titleLarge)
                 }
                 Spacer(Modifier.height(8.dp))
-                SectionTitle("外观")
-            androidx.compose.material3.OutlinedButton(
+                            androidx.compose.material3.OutlinedButton(
                 onClick = { showScreenQA = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -205,10 +204,11 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
             if (settingsPage != 2) return@Column
 
-            SectionTitle("外观")
-            ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }
-            FontSizeSlider(settings.fontSize) { vm.setFontSize(it) }
-            BoldColorPicker(settings.boldColor) { vm.setBoldColor(it) }
+                        SettingsSectionCard {
+                ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }
+                FontSizeSlider(settings.fontSize) { vm.setFontSize(it) }
+                BoldColorPicker(settings.boldColor) { vm.setBoldColor(it) }
+            }
 
             }
             if (settingsPage == 3) {
@@ -218,11 +218,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 if (settingsPage != 3) return@Column
-            SectionTitle("上下文")
-            ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
+                        SettingsSectionCard {
+                ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
+            }
 
-            SectionTitle("上下文压缩")
-            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("超出历史条数时压缩上文", modifier = Modifier.weight(1f))
                 Switch(
                     checked = settings.compressOverflow,
@@ -246,8 +246,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            SectionTitle("高级")
-            OutlinedTextField(
+                        OutlinedTextField(
                 value = systemPrompt,
                 onValueChange = { systemPrompt = it; vm.setSystemPrompt(it) },
                 label = { Text("系统提示词（可选）") },
@@ -256,6 +255,18 @@ fun SettingsScreen(onBack: () -> Unit) {
             )
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
 
