@@ -100,9 +100,20 @@ fun SettingsScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("设置") },
+                title = {
+                    Text(when (settingsPage) {
+                        0 -> "API 连接与模型"
+                        2 -> "外观"
+                        3 -> "高级"
+                        else -> "设置"
+                    })
+                },
                 navigationIcon = {
-                    AppIconButton(onClick = onBack, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                    AppIconButton(
+                        onClick = { if (settingsPage == -1) onBack() else settingsPage = -1 },
+                        icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "返回"
+                    )
                 }
             )
         }
@@ -121,19 +132,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
                 SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
             } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
-                Text(
-                    when (settingsPage) {
-                        0 -> "API 连接与模型"
-                        2 -> "外观"
-                        3 -> "高级"
-                        else -> "设置"
-                    },
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-            Spacer(Modifier.height(12.dp))
+
 
             if (settingsPage == 0) {
                 SettingsSectionCard {
