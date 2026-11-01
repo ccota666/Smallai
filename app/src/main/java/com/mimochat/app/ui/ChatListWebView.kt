@@ -257,7 +257,7 @@ private fun chatShellHtml(
 ): String {
     val fg = if (dark) "#E8E8E8" else "#1C1C1E"
     val muted = if (dark) "#9E9E9E" else "#6E6E73"
-    val userBg = if (dark) "#2E5A8A" else "#D6E8FF"
+    val userBg = if (dark) "#333333" else "#F4F3F1"
     val userFg = if (dark) "#FFFFFF" else "#10243A"
     val codeBg = if (dark) "#2A2A2A" else "#F2F2F4"
     val borderC = if (dark) "#333333" else "#E2E2E7"
@@ -301,7 +301,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .content > *:last-child{margin-bottom:2px;}
 .msg.user{display:flex;justify-content:flex-end;}
 .msg.user .bubble{max-width:88%;background:$userBg;color:$userFg;
-  padding:9px 13px;border-radius:18px;border-bottom-right-radius:6px;
+  padding:6px 12px;border-radius:12px;
   word-break:break-word;}
 .msg.ai .bubble{max-width:100%;padding:0;border:none;background:transparent;}
 .content{margin:4px 0;overflow-wrap:break-word;}
