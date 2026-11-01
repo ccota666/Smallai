@@ -27,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -228,6 +229,7 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun ModelDropdown(models: List<String>, current: String, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    val isExpensive = com.mimochat.app.data.ModelsParser.isExpensive(models.joinToString(","), current)
     Box {
         OutlinedTextField(
             value = current,
@@ -235,12 +237,28 @@ private fun ModelDropdown(models: List<String>, current: String, onSelect: (Stri
             readOnly = true,
             label = { Text("默认模型") },
             trailingIcon = { Icon(Icons.Rounded.KeyboardArrowDown, null) },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = if (isExpensive) Color(0xFFE74C3C) else MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = if (isExpensive) Color(0xFFE74C3C) else MaterialTheme.colorScheme.onSurface,
+                focusedBorderColor = if (isExpensive) Color(0xFFE74C3C) else MaterialTheme.colorScheme.outline,
+                unfocusedBorderColor = if (isExpensive) Color(0xFFE74C3C) else MaterialTheme.colorScheme.outline
+            )
         )
         Box(Modifier.matchParentSize().clickable { expanded = true })
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             models.forEach { m ->
-                DropdownMenuItem(text = { Text(m) }, onClick = { onSelect(m); expanded = false })
+                val exp = com.mimochat.app.data.ModelsParser.isExpensive(models.joinToString(","), m)
+                val displayName = if (exp) m.removePrefix("**").removeSuffix("**") else m
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            displayName + if (exp) " ¥" else "",
+                            color = if (exp) Color(0xFFE74C3C) else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = { onSelect(m.removePrefix("**").removeSuffix("**")); expanded = false }
+                )
             }
         }
     }

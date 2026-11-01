@@ -242,6 +242,7 @@ fun ChatScreen(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val voiceRecorder = remember { com.mimochat.app.ui.VoiceRecorder(context) }
     var agentMode by remember { mutableStateOf(false) }
+
     val reqTermuxPerm = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -716,6 +717,9 @@ private fun ChatTopBar(
     var modelMenuOpen by remember { mutableStateOf(false) }
     var settingsMenuOpen by remember { mutableStateOf(false) }
     var questionsMenuOpen by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("chat_prefs", android.content.Context.MODE_PRIVATE) }
+    var showAgentHint by remember { mutableStateOf(prefs.getBoolean("show_agent_hint", true)) }
     TopAppBar(
         title = {},
         colors = TopAppBarDefaults.topAppBarColors(
@@ -765,8 +769,7 @@ private fun ChatTopBar(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    (if (id == currentModel) "● " else "   ") + id +
-                                        if (exp) " ¥" else "",
+                                    (if (id == currentModel) "● " else "   ") + id,
                                     color = if (exp) Color(0xFFE74C3C)
                                             else MaterialTheme.colorScheme.onSurface,
                                     fontWeight = if (id == currentModel)
@@ -883,12 +886,24 @@ private fun ChatTopBar(
             }
             DropdownMenu(expanded = settingsMenuOpen, onDismissRequest = { settingsMenuOpen = false }) {
                 Column(Modifier.widthIn(min = 260.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(
-                        "⚠️ 此处设置对智能体模式不生效",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    if (showAgentHint) {
+                        Text(
+                            "⚠️ 此处设置对智能体模式不生效",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                        TextButton(
+                            onClick = { showAgentHint = false
+                            prefs.edit().putBoolean("show_agent_hint", false).apply() },
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            Text("不再显示",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline)
+                        }
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text("联网搜索", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                         Switch(checked = webSearch, onCheckedChange = onSetWebSearch)
