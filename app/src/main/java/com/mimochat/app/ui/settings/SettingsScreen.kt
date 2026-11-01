@@ -69,13 +69,13 @@ import com.mimochat.app.ui.AppSlider
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
+    var settingsPage by remember { mutableStateOf(-1) }
     var showScreenQA by remember { mutableStateOf(false) }
     if (showScreenQA) {
         com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
         return
     }
-    var settingsPage by remember { mutableStateOf(-1) }
-    val app = LocalContext.current.applicationContext as MiMoApplication
+        val app = LocalContext.current.applicationContext as MiMoApplication
     val scope = rememberCoroutineScope()
     val vm: SettingsViewModel = viewModel(factory = viewModelFactory {
         initializer { SettingsViewModel(app.settingsRepository) }
@@ -124,7 +124,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("API 连接与模型", style = MaterialTheme.typography.titleLarge)
                 }
                 Spacer(Modifier.height(8.dp))
-                SectionTitle("API 连接")
+                if (settingsPage == -1) {
+                SettingsNavCard("API 连接与模型", "") { settingsPage = 0 }
+                SettingsNavCard("屏幕问答", "") { showScreenQA = true }
+                SettingsNavCard("外观", "") { settingsPage = 2 }
+                SettingsNavCard("高级", "") { settingsPage = 3 }
+                return@Column
+            }
+            if (settingsPage != 0) return@Column
+            SectionTitle("API 连接")
             // Base URL 预设 + 自定义
             Text("Base URL", style = MaterialTheme.typography.labelLarge)
             val urlPresets = listOf(
@@ -195,6 +203,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             ) {
                 Text("屏幕问答 · 悬浮球截屏提问")
             }
+            if (settingsPage != 2) return@Column
 
             SectionTitle("外观")
             ThemeSelector(settings.themeMode) { vm.setThemeMode(it) }
@@ -208,7 +217,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("高级", style = MaterialTheme.typography.titleLarge)
                 }
                 Spacer(Modifier.height(8.dp))
-                SectionTitle("上下文")
+                if (settingsPage != 3) return@Column
+            SectionTitle("上下文")
             ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
 
             SectionTitle("上下文压缩")
@@ -245,6 +255,21 @@ fun SettingsScreen(onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsNavCard(title: String, subtitle: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -425,34 +450,6 @@ private fun ContextLimitSlider(current: Int, onChange: (Int) -> Unit) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-private fun SettingsNavCard(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 
