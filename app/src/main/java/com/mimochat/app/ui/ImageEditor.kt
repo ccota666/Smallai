@@ -440,12 +440,12 @@ private fun hitTest(
 ): String {
     if (crop == null) return "Move"
     val (lt, rb) = crop
-    val edge = 0.22f
-    // 图片边缘处需要更大热区，否则手指容易出界
-    val edgeL = if (lt.first < edge) edge * 1.5f else edge
-    val edgeR = if (rb.first > 1f - edge) edge * 1.5f else edge
-    val edgeT = if (lt.second < edge) edge * 1.5f else edge
-    val edgeB = if (rb.second > 1f - edge) edge * 1.5f else edge
+    val edge = 0.12f
+    // 图片边缘处：用户手指容易误触到图片外，检测时允许超出图片边界
+    val edgeL = if (lt.first < 0.02f) 0.20f else edge
+    val edgeR = if (rb.first > 0.98f) 0.20f else edge
+    val edgeT = if (lt.second < 0.02f) 0.20f else edge
+    val edgeB = if (rb.second > 0.98f) 0.20f else edge
     val nearL = kotlin.math.abs(nx - lt.first) < edgeL
     val nearR = kotlin.math.abs(nx - rb.first) < edgeR
     val nearT = kotlin.math.abs(ny - lt.second) < edgeT

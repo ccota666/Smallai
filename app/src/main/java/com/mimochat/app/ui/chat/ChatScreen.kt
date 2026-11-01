@@ -884,7 +884,7 @@ private fun ChatTopBar(
             DropdownMenu(expanded = settingsMenuOpen, onDismissRequest = { settingsMenuOpen = false }) {
                 Column(Modifier.widthIn(min = 260.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(
-                        "此处设置对智能体模式不生效",
+                        "⚠️ 此处设置对智能体模式不生效",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
