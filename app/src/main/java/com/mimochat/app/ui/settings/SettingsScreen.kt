@@ -74,6 +74,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
         return
     }
+    var settingsPage by remember { mutableStateOf(-1) }
     val app = LocalContext.current.applicationContext as MiMoApplication
     val scope = rememberCoroutineScope()
     val vm: SettingsViewModel = viewModel(factory = viewModelFactory {
@@ -111,7 +112,19 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SectionTitle("API 连接")
+            if (settingsPage == -1) {
+                SettingsNavCard("API 连接与模型", "接口、Key、模型") { settingsPage = 0 }
+                SettingsNavCard("屏幕问答", "悬浮球截屏") { showScreenQA = true }
+                SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
+                SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
+            }
+            if (settingsPage == 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
+                    Text("API 连接与模型", style = MaterialTheme.typography.titleLarge)
+                }
+                Spacer(Modifier.height(8.dp))
+                SectionTitle("API 连接")
             // Base URL 预设 + 自定义
             Text("Base URL", style = MaterialTheme.typography.labelLarge)
             val urlPresets = listOf(
@@ -168,7 +181,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onSelect = { vm.setModel(it) }
             )
 
-            SectionTitle("工具")
+            }
+            if (settingsPage == 2) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
+                    Text("外观", style = MaterialTheme.typography.titleLarge)
+                }
+                Spacer(Modifier.height(8.dp))
+                SectionTitle("外观")
             androidx.compose.material3.OutlinedButton(
                 onClick = { showScreenQA = true },
                 modifier = Modifier.fillMaxWidth()
@@ -181,7 +201,14 @@ fun SettingsScreen(onBack: () -> Unit) {
             FontSizeSlider(settings.fontSize) { vm.setFontSize(it) }
             BoldColorPicker(settings.boldColor) { vm.setBoldColor(it) }
 
-            SectionTitle("上下文")
+            }
+            if (settingsPage == 3) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
+                    Text("高级", style = MaterialTheme.typography.titleLarge)
+                }
+                Spacer(Modifier.height(8.dp))
+                SectionTitle("上下文")
             ContextLimitSlider(settings.contextLimit) { vm.setContextLimit(it) }
 
             SectionTitle("上下文压缩")
@@ -217,6 +244,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
+            }
         }
     }
 }
