@@ -92,6 +92,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     LaunchedEffect(settings.baseUrl) { baseUrl = settings.baseUrl }
     LaunchedEffect(settings.models) { models = settings.models }
     LaunchedEffect(settings.systemPrompt) { systemPrompt = settings.systemPrompt }
+    LaunchedEffect(settings.compressPrompt) { compressPrompt = settings.compressPrompt }
 
     val modelList = models.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 

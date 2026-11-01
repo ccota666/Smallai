@@ -1506,7 +1506,7 @@ function atBottom(){
 }
 function notifyBottom(){
   var near = atBottom();
-  try { Android.onScroll(near && window.__followMode); } catch(e) {}
+  try { Android.onScroll(near); } catch(e) {}
 }
 
 /* —— 用户一操作就取消跟随（不依赖“是否离开底部”）——
