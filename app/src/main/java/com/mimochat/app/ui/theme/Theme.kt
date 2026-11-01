@@ -31,14 +31,14 @@ private val LightColors = lightColorScheme(
     onBackground = Color(0xFF2F2B25),      // text.primary
     surface = Color.White,                 // bg.surface
     onSurface = Color(0xFF2F2B25),
-    surfaceVariant = Color(0xFFEDE6D8),    // bg.muted
+    surfaceVariant = Color(0xFFF0EFED),    // bg.muted
     onSurfaceVariant = Color(0xFF5A5348),  // text.secondary
     error = Color(0xFFB36B5D),             // danger
     onError = Color(0xFFFAF6EF),
     errorContainer = Color(0xFFF0DCD6),
     onErrorContainer = Color(0xFF5A3028),
-    outline = Color(0xFFCFC5B2),           // border.strong
-    outlineVariant = Color(0xFFE0D8C8)     // border
+    outline = Color(0xFFD0CECB),           // border.strong
+    outlineVariant = Color(0xFFE5E3E0)     // border
 )
 
 private val DarkColors = darkColorScheme(
@@ -56,14 +56,14 @@ private val DarkColors = darkColorScheme(
     onBackground = Color(0xFFEDE6D8),      // text.primary
     surface = Color.Black,                 // bg.surface
     onSurface = Color(0xFFEDE6D8),
-    surfaceVariant = Color(0xFF322E29),    // bg.muted
+    surfaceVariant = Color(0xFF2A2A2A),    // bg.muted
     onSurfaceVariant = Color(0xFFB8AE9C),  // text.secondary
     error = Color(0xFFC47A6B),             // danger
     onError = Color(0xFF1E1C19),
     errorContainer = Color(0xFF3A2A26),
     onErrorContainer = Color(0xFFF0DCD6),
-    outline = Color(0xFF4A443B),           // border.strong
-    outlineVariant = Color(0xFF3A352E)     // border
+    outline = Color(0xFF4A4A4A),           // border.strong
+    outlineVariant = Color(0xFF3A3A3A)     // border
 )
 
 @Composable

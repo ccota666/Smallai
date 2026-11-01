@@ -382,7 +382,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   background:linear-gradient(transparent,var(--code-bg,#1e1e2e));pointer-events:none;}
 #fs .fs-body .codebox-wrap{position:relative;}
 #fs .fs-body .expand-btn{position:absolute;right:8px;bottom:6px;z-index:5;
-  border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer;}
+  border:1px solid $borderC;background:$codeBg;color:$muted;border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer;}
 #fs .fs-body pre code{background:transparent;padding:0;font-size:12.5px;line-height:1.55;}
 #fs.on,#fs.on .fs-body{overflow:visible !important;}
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow:visible;}
@@ -400,7 +400,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   font-size:14px;line-height:1.6;}
 #fs .mathpad,#fs .mmpad{padding:10px;overflow-x:auto;}
 #fs button{border:1px solid $borderC;background:transparent;color:$fg;
-  border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;}
+  border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;
+  transition:background 0.15s;}
+#fs button:active{background:rgba(0,0,0,0.06);}
 .reason{margin:10px 0;border:1px solid $borderC;border-radius:12px;
   background:${if (dark) "#2A2A2A" else "#FFFFFF"};font-size:0.92em;overflow:hidden;}
 .reason summary{cursor:pointer;user-select:none;padding:9px 12px;
@@ -433,11 +435,11 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .pending{color:$muted;font-style:italic;}
 /* 智能体任务卡 */
 .taskcard{margin:12px 0;border:1px solid $borderC;border-radius:14px;
-  overflow:hidden;background:linear-gradient(180deg,rgba(47,111,237,0.06),transparent 60%),$codeBg;}
+  overflow:hidden;background:$userBg;}
 .taskcard .thead{display:flex;align-items:center;gap:8px;
-  padding:10px 12px;background:rgba(47,111,237,0.10);
+  padding:10px 12px;background:rgba(0,0,0,0.04);
   border-bottom:1px solid $borderC;font-size:13px;font-weight:600;}
-.taskcard.done .thead{background:rgba(39,174,96,0.14);color:#27AE60;}
+.taskcard.done .thead{background:rgba(39,174,96,0.10);color:#27AE60;}
 .taskcard.err .thead{background:rgba(231,76,60,0.12);color:#E74C3C;}
 .taskcard .spin{display:inline-block;width:12px;height:12px;border-radius:50%;
   border:2px solid $accent;border-top-color:transparent;
