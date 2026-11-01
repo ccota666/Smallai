@@ -368,6 +368,17 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
+#fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;
+  transform:scale(var(--code-inv,1));transform-origin:0 0;}
+#fs .fs-body .codebody{overflow:hidden;position:relative;
+  transform:scale(var(--code-inv,1));transform-origin:0 0;}
+#fs .fs-body .codebody.clamped{max-height:calc(1.55em * 6 + 22px);}
+#fs .fs-body .codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
+  background:linear-gradient(transparent,var(--code-bg,#1e1e2e));pointer-events:none;}
+#fs .fs-body .codebox-wrap{position:relative;}
+#fs .fs-body .expand-btn{position:absolute;right:8px;bottom:6px;z-index:5;
+  border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer;}
+#fs .fs-body pre code{background:transparent;padding:0;font-size:12.5px;line-height:1.55;}
 #fs.on,#fs.on .fs-body{overflow:visible !important;}
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
@@ -582,7 +593,9 @@ function fsBody(){ return document.getElementById('fsBody'); }
 function applyFsTransform(){
   var b = fsBody();
   if (!b) return;
-  b.style.transformOrigin = '0 0'; document.documentElement.style.overflow='visible'; document.body.style.overflow='visible';
+  b.style.transformOrigin = '0 0';
+  // 代码块不跟随缩放：反向抵消父级变换
+  b.style.setProperty('--code-inv', (1 / fsS).toFixed(4)); document.documentElement.style.overflow='visible'; document.body.style.overflow='visible';
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
 }
 
