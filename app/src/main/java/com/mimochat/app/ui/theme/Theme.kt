@@ -17,14 +17,14 @@ import com.mimochat.app.data.AppSettings
 
 // 米白护眼 (cream-eye-care) 主题
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF5F7D6B),           // accent 鼠尾草绿
-    onPrimary = Color(0xFFFAF6EF),         // accent.on
-    primaryContainer = Color(0xFFE4EEE6),  // accent.soft
-    onPrimaryContainer = Color(0xFF455E50),// accent.active
-    secondary = Color(0xFF5A7A68),         // link
+    primary = Color(0xFF3C3C3C),           // accent 深灰
+    onPrimary = Color(0xFFFFFFFF),         // accent.on
+    primaryContainer = Color(0xFFE8E8E8),  // accent.soft
+    onPrimaryContainer = Color(0xFF2C2C2C),// accent.active
+    secondary = Color(0xFF555555),         // link
     onSecondary = Color(0xFFFAF6EF),
-    secondaryContainer = Color(0xFFE4EEE6),
-    onSecondaryContainer = Color(0xFF455E50),
+    secondaryContainer = Color(0xFFE8E8E8),
+    onSecondaryContainer = Color(0xFF2C2C2C),
     tertiary = Color(0xFF6A8899),          // info
     onTertiary = Color(0xFFFAF6EF),
     background = Color.White,              // bg.canvas
@@ -42,13 +42,13 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF7FA08C),           // accent
-    onPrimary = Color(0xFF1E1C19),         // accent.on
-    primaryContainer = Color(0xFF2A3530),  // accent.soft
+    primary = Color(0xFFB0B0B0),           // accent
+    onPrimary = Color(0xFF1A1A1A),         // accent.on
+    primaryContainer = Color(0xFF2E2E2E),  // accent.soft
     onPrimaryContainer = Color(0xFFEDE6D8),
-    secondary = Color(0xFF8FB09B),         // link
+    secondary = Color(0xFFAAAAAA),         // link
     onSecondary = Color(0xFF1E1C19),
-    secondaryContainer = Color(0xFF2A3530),
+    secondaryContainer = Color(0xFF2E2E2E),
     onSecondaryContainer = Color(0xFFEDE6D8),
     tertiary = Color(0xFF7A9AAB),          // info
     onTertiary = Color(0xFF1E1C19),
