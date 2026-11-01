@@ -316,8 +316,8 @@ fun ChatScreen(
     var artifactNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var artifactRefreshTick by remember { mutableStateOf(0) }
     // 加载产物列表（智能体生成的文件，排除 uploads/ 和隐藏文件）
-    // 消息变化时刷新（任务完成后立即可见）
-    LaunchedEffect(conversationId, messages.size, artifactRefreshTick) {
+    // 打开列表菜单时刷新（消息一直在更新，messages.size 不变）
+    LaunchedEffect(conversationId, artifactRefreshTick) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val dir = java.io.File("/storage/emulated/0/Download/MiMoChat", "conv_$conversationId")
             val names = dir.listFiles()?.filter {
@@ -402,6 +402,7 @@ fun ChatScreen(
                 temperature = settings.temperature,
                 questions = messages.filter { it.role == "user" && it.content.isNotBlank() },
                 artifacts = artifactNames,
+                onRefreshArtifacts = { artifactRefreshTick++ },
                 onOpenArtifact = { name ->
                     scope.launch {
                         val dir = java.io.File("/storage/emulated/0/Download/MiMoChat", "conv_$conversationId")
@@ -703,6 +704,7 @@ private fun ChatTopBar(
     questions: List<ChatMessage>,
     artifacts: List<String> = emptyList(),
     onOpenArtifact: (String) -> Unit = {},
+    onRefreshArtifacts: () -> Unit = {},
     agentMode: Boolean = false,
     onOpenList: () -> Unit,
     onSelectModel: (String) -> Unit,
@@ -781,7 +783,7 @@ private fun ChatTopBar(
             // 问题/产物双分页
             Box {
                 AppIconButton(
-                    onClick = { questionsMenuOpen = true },
+                    onClick = { questionsMenuOpen = true; onRefreshArtifacts() },
                     icon = Icons.AutoMirrored.Rounded.ListAlt,
                     contentDescription = "问题与产物",
                     tint = if (questions.isNotEmpty() || artifacts.isNotEmpty())
@@ -881,14 +883,12 @@ private fun ChatTopBar(
             }
             DropdownMenu(expanded = settingsMenuOpen, onDismissRequest = { settingsMenuOpen = false }) {
                 Column(Modifier.widthIn(min = 260.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    if (agentMode) {
-                        Text(
-                            "此处设置对智能体模式不生效",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
+                    Text(
+                        "此处设置对智能体模式不生效",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text("联网搜索", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                         Switch(checked = webSearch, onCheckedChange = onSetWebSearch)

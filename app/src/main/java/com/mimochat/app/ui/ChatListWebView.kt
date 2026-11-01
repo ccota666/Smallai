@@ -540,6 +540,15 @@ function openFs(title, html){
   b.innerHTML = html;
   resetFsView();
   document.getElementById('fs').classList.add('on');
+  // 居中显示
+  setTimeout(function(){
+    var b = document.getElementById('fsBody');
+    if (b) {
+      fsX = (window.innerWidth - b.offsetWidth) / 2;
+      fsY = (window.innerHeight - b.scrollHeight) / 2;
+      applyFsTransform();
+    }
+  }, 50);
   renderMath(b, true); renderCode(b, true);
   bindFsGestures();
   try { if (window.mermaid && b.querySelector('.mermaid'))
@@ -640,10 +649,11 @@ function bindFsGestures(){
       var s0 = fsS;
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
       if (s1 !== s0){
-        fsX = midX - (midX - fsX) * (s1 / s0);
-        var centerY = window.innerHeight / 2;
-        var blendY = midY * 0.5 + centerY * 0.5;
-        fsY = blendY - (blendY - fsY) * (s1 / s0);
+        // 以视口中心为原点缩放
+        var cx = window.innerWidth / 2;
+        var cy = window.innerHeight / 2;
+        fsX = cx - (cx - fsX) * (s1 / s0);
+        fsY = cy - (cy - fsY) * (s1 / s0);
         fsS = s1;
       }
       pinchDist = d;
