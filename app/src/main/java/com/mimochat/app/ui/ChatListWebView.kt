@@ -557,12 +557,10 @@ function openCodeFs(title, codeHtml){
   var b = document.getElementById('fsBody');
   b.innerHTML = '<div class="fs-code-wrap">' + codeHtml + '</div>';
   document.getElementById('fs').classList.add('on');
-  // 代码模式：fs-body 可滚动，无变换
+  // 代码模式：不覆盖 display，保持 flex 布局让 fs-code-wrap 约束高度滚动
   b.style.transform = '';
   b.style.transformOrigin = '';
   b.style.width = '';
-  b.style.overflow = 'auto';
-  b.style.display = 'block';
   renderMath(b, true); renderCode(b, true);
   try { Android.setOrientation(0); } catch(e) {}
   try { Android.setFullscreen(true); } catch(e) {}
