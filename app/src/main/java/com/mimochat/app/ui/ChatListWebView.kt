@@ -370,7 +370,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 #fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;}
 #fs .fs-code-wrap{padding:0;overflow:auto;flex:1;min-height:0;
-  -webkit-overflow-scrolling:touch;}
+  -webkit-overflow-scrolling:touch;touch-action:auto !important;}
 #fs .fs-code-wrap pre{margin:0;padding:12px;min-width:fit-content;}
 #fs .fs-code-wrap code{background:transparent;padding:0;font-size:13px;line-height:1.6;
   white-space:pre;}
