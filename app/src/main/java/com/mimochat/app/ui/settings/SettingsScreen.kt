@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -71,6 +72,9 @@ import com.mimochat.app.ui.AppSlider
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     var settingsPage by remember { mutableStateOf(-1) }
+    androidx.activity.compose.BackHandler(enabled = settingsPage != -1) {
+        settingsPage = -1
+    }
     var showScreenQA by remember { mutableStateOf(false) }
     if (showScreenQA) {
         com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
