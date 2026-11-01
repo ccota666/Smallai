@@ -368,10 +368,8 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
-#fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;
-  transform:scale(var(--code-inv,1));transform-origin:0 0;}
-#fs .fs-body .codebody{overflow:hidden;position:relative;
-  transform:scale(var(--code-inv,1));transform-origin:0 0;}
+#fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;}
+#fs .fs-body .codebody{overflow:hidden;position:relative;}
 #fs .fs-body .codebody.clamped{max-height:calc(1.55em * 6 + 22px);}
 #fs .fs-body .codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
   background:linear-gradient(transparent,var(--code-bg,#1e1e2e));pointer-events:none;}
@@ -564,7 +562,10 @@ function openFs(title, html){
     }
   }, 50);
   renderMath(b, true); renderCode(b, true);
-  bindFsGestures();
+  // 只有非纯代码内容才绑定缩放
+  if (!b.querySelector('pre') || b.querySelector('.mathpad, .mmpad, .mermaid, .content')) {
+    bindFsGestures();
+  }
   try { if (window.mermaid && b.querySelector('.mermaid'))
     mermaid.run({querySelector:'#fsBody .mermaid'}); } catch(e) {}
   try { Android.setOrientation(0); } catch(e) {}
@@ -593,9 +594,7 @@ function fsBody(){ return document.getElementById('fsBody'); }
 function applyFsTransform(){
   var b = fsBody();
   if (!b) return;
-  b.style.transformOrigin = '0 0';
-  // 代码块不跟随缩放：反向抵消父级变换
-  b.style.setProperty('--code-inv', (1 / fsS).toFixed(4)); document.documentElement.style.overflow='visible'; document.body.style.overflow='visible';
+  b.style.transformOrigin = '0 0'; document.documentElement.style.overflow='visible'; document.body.style.overflow='visible';
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
 }
 
