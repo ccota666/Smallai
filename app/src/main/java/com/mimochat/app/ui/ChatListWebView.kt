@@ -545,7 +545,7 @@ function openFs(title, html){
     var b = document.getElementById('fsBody');
     if (b) {
       fsX = (window.innerWidth - b.offsetWidth) / 2;
-      fsY = (window.innerHeight - b.scrollHeight) / 2;
+      fsY = (window.innerHeight - b.offsetHeight) / 2;
       applyFsTransform();
     }
   }, 50);
@@ -571,20 +571,30 @@ function toggleRotate(){
    - 不改 width，避免重排导致位移/提前消失
    - 1x=铺满屏，最大 6x；放大后可单指平移 */
 var fsS = 1, fsX = 0, fsY = 0;
-var pinchDist = 0, panLast = null;
+var pinchDist = 0, panLast = null, pinchS0 = 1;
 
 function fsBody(){ return document.getElementById('fsBody'); }
+
+// 获取元素未变换时的左上角坐标（视口坐标）
+function fsOrigin(){
+  var b = fsBody();
+  if (!b) return {x:0, y:0};
+  var r = b.getBoundingClientRect();
+  return {x: r.left - fsX, y: r.top - fsY};
+}
 
 function clampFs(){
   var b = fsBody();
   if (!b) return;
+  var o = fsOrigin();
   var w = b.offsetWidth * fsS;
-  var h = b.scrollHeight * fsS;
+  var h = b.offsetHeight * fsS;
   var vw = window.innerWidth, vh = window.innerHeight;
-  var minX = Math.min(0, vw - w);
-  var minY = Math.min(0, vh - h);
-  fsX = Math.max(minX, Math.min(0, fsX));
-  fsY = Math.max(minY, Math.min(0, fsY));
+  // 内容比视口小居中，大则夹紧边界
+  if (w <= vw) { fsX = (vw - w) / 2 - o.x; }
+  else { fsX = Math.max(vw - w - o.x, Math.min(-o.x, fsX)); }
+  if (h <= vh) { fsY = (vh - h) / 2 - o.y; }
+  else { fsY = Math.max(vh - h - o.y, Math.min(-o.y, fsY)); }
 }
 
 function applyFsTransform(){
@@ -620,18 +630,19 @@ function bindFsGestures(){
 
   el.addEventListener('touchstart', function(e){
     if (e.touches.length === 2){
-      // 代码块不参与缩放：捰合点在 pre/code 内则忽略
       var t1 = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
       var t2 = document.elementFromPoint(e.touches[1].clientX, e.touches[1].clientY);
-      var inCode = function(el){
-        while (el && el !== el.ownerDocument.body){
-          if (el.tagName === 'PRE' || el.tagName === 'CODE' || el.classList && el.classList.contains('codebody')) return true;
-          el = el.parentElement;
+      var inCode = function(node){
+        while (node && node !== node.ownerDocument.body){
+          if (node.tagName === 'PRE' || node.tagName === 'CODE' || node.classList && node.classList.contains('codebody')) return true;
+          node = node.parentElement;
         }
         return false;
       };
       if (inCode(t1) || inCode(t2)) { pinchDist = 0; return; }
+      // 同时采样 s0 和 pinchDist
       pinchDist = distOf(e.touches);
+      pinchS0 = fsS;
       panLast = null;
     } else if (e.touches.length === 1 && fsS > 1.02){
       panLast = {x: e.touches[0].clientX, y: e.touches[0].clientY};
@@ -642,21 +653,19 @@ function bindFsGestures(){
     if (e.touches.length === 2 && pinchDist > 0){
       e.preventDefault();
       var d = distOf(e.touches);
-      // 用 offsetLeft/offsetTop（未变换的布局位置），不用 getBoundingClientRect（包含变换偏移）
-      var bx = el.offsetLeft, by = el.offsetTop;
-      var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - bx;
-      var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - by;
-      var s0 = fsS;
+      if (d < 1) return;
+      // 锨点 = 捰合中点（不是视口中心）
+      var o = fsOrigin();
+      var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - o.x;
+      var my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - o.y;
+      var s0 = pinchS0;
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
-      if (s1 !== s0){
-        // 以视口中心为原点缩放
-        var cx = window.innerWidth / 2;
-        var cy = window.innerHeight / 2;
-        fsX = cx - (cx - fsX) * (s1 / s0);
-        fsY = cy - (cy - fsY) * (s1 / s0);
+      if (Math.abs(s1 - s0) > 0.001){
+        // 绕捰合中点缩放：保持指下内容不动
+        fsX = mx - (mx - fsX) * (s1 / s0);
+        fsY = my - (my - fsY) * (s1 / s0);
         fsS = s1;
       }
-      pinchDist = d;
       var fsEl = document.getElementById('fs');
       if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
       applyFsTransform();
@@ -672,7 +681,7 @@ function bindFsGestures(){
   }, {passive:false});
 
   el.addEventListener('touchend', function(e){
-    if (e.touches.length < 2) pinchDist = 0;
+    if (e.touches.length < 2) { pinchDist = 0; pinchS0 = 1; }
     if (e.touches.length < 1) panLast = null;
   }, {passive:true});
 }

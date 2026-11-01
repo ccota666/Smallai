@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -316,20 +315,13 @@ private fun CropPreview(
         val k = minOf(maxW / imgW, maxH / imgH)
         val dispW = (imgW * k).toInt().coerceAtLeast(1)
         val dispH = (imgH * k).toInt().coerceAtLeast(1)
-        // 图片+扩展手势区域：外层比图片大 24dp
-        val density = androidx.compose.ui.platform.LocalDensity.current
-        val extPx = with(density) { 24.dp.roundToPx() }
         Box(
             Modifier
-                .size(with(density){(dispW + extPx * 2).toDp()}, with(density){(dispH + extPx * 2).toDp()})
+                .size(with(androidx.compose.ui.platform.LocalDensity.current){dispW.toDp()}, with(androidx.compose.ui.platform.LocalDensity.current){dispH.toDp()})
         ) {
-        // 图片居中放置
-        Box(Modifier.offset(x = with(density){extPx.toDp()}, y = with(density){extPx.toDp()})
-            .size(with(density){dispW.toDp()}, with(density){dispH.toDp()})) {
-            Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-        }
+        Image(dispBmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
 
-        // 手势层覆盖整个区域（含扩展区）
+        // 透明手势层：确保拿到所有拖拽
         Box(
             Modifier
                 .fillMaxSize()
@@ -337,8 +329,8 @@ private fun CropPreview(
                     detectDragGestures(
                         onDragStart = { pos ->
                             onDragState(true)
-                            val nx = (pos.x - extPx) / dispW.toFloat()
-                            val ny = (pos.y - extPx) / dispH.toFloat()
+                            val nx = pos.x / size.width
+                            val ny = pos.y / size.height
                             dragStart = Offset(nx, ny)
                             cropAtStart = crop
                             val cur = cropState.value
@@ -348,8 +340,8 @@ private fun CropPreview(
                         },
                         onDrag = { change, _ ->
                             change.consume()
-                            val nx = (change.position.x - extPx) / dispW.toFloat()
-                            val ny = (change.position.y - extPx) / dispH.toFloat()
+                            val nx = change.position.x / size.width
+                            val ny = change.position.y / size.height
                             val dx = nx - dragStart.x
                             val dy = ny - dragStart.y
                             val st = cropAtStart
@@ -406,13 +398,13 @@ private fun CropPreview(
                 }
         )
 
-        // 选区蒙层 + 边框（坐标基于图片区域，排除扩展区）
+        // 选区蒙层 + 边框
         Canvas(Modifier.fillMaxSize()) {
             val c = crop ?: return@Canvas
-            val left = extPx + c.first.first * dispW
-            val top = extPx + c.first.second * dispH
-            val right = extPx + c.second.first * dispW
-            val bottom = extPx + c.second.second * dispH
+            val left = c.first.first * size.width
+            val top = c.first.second * size.height
+            val right = c.second.first * size.width
+            val bottom = c.second.second * size.height
             drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, 0f), Size(size.width, top))
             drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, bottom), Size(size.width, size.height - bottom))
             drawRect(Color.Black.copy(alpha = 0.42f), Offset(0f, top), Size(left, bottom - top))
