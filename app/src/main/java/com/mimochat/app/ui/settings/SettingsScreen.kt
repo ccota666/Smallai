@@ -32,6 +32,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
@@ -119,10 +120,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 SettingsNavCard("屏幕问答", "悬浮球截屏") { showScreenQA = true }
                 SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
                 SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
-                return@Column
-            }
-
-            // 页面返回按钮 + 标题
+            } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AppIconButton(onClick = { settingsPage = -1 }, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
                 Text(
@@ -230,37 +228,36 @@ fun SettingsScreen(onBack: () -> Unit) {
                     )
                 }
             }
+            }
         }
     }
 }
 
 @Composable
 private fun SettingsSectionCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
-
 @Composable
 private fun SettingsNavCard(title: String, subtitle: String, onClick: () -> Unit) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("›", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
-
 @Composable
 private fun SectionTitle(text: String) {
     Text(
