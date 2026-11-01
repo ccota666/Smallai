@@ -365,14 +365,15 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   position:relative;z-index:20;background:inherit;}
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
-#fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
+#fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;display:flex;flex-direction:column;}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 #fs .fs-body pre{margin:0;padding:10px 12px;overflow-x:auto;}
-#fs .fs-code-wrap{padding:0;overflow:auto;max-height:100%;}
-#fs .fs-code-wrap pre{margin:0;padding:12px;overflow-x:auto;
+#fs .fs-code-wrap{padding:0;overflow:auto;flex:1;min-height:0;
   -webkit-overflow-scrolling:touch;}
-#fs .fs-code-wrap code{background:transparent;padding:0;font-size:13px;line-height:1.6;}
+#fs .fs-code-wrap pre{margin:0;padding:12px;min-width:fit-content;}
+#fs .fs-code-wrap code{background:transparent;padding:0;font-size:13px;line-height:1.6;
+  white-space:pre;}
 #fs .fs-body .codebody{overflow:hidden;position:relative;}
 #fs .fs-body .codebody.clamped{max-height:calc(1.55em * 6 + 22px);}
 #fs .fs-body .codebody.clamped .fade{position:absolute;left:0;right:0;bottom:0;height:36px;
