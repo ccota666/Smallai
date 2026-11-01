@@ -259,6 +259,7 @@ private fun chatShellHtml(
     val muted = if (dark) "#9E9E9E" else "#6E6E73"
     val userBg = if (dark) "#333333" else "#F4F3F1"
     val userFg = if (dark) "#FFFFFF" else "#10243A"
+    val fgCard = if (dark) "#1E1E1E" else "#FFFFFF"
     val codeBg = if (dark) "#2A2A2A" else "#F2F2F4"
     val borderC = if (dark) "#333333" else "#E2E2E7"
     val quoteBg = if (dark) "#222222" else "#F6F6F8"
@@ -435,9 +436,9 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .pending{color:$muted;font-style:italic;}
 /* 智能体任务卡 */
 .taskcard{margin:12px 0;border:1px solid $borderC;border-radius:14px;
-  overflow:hidden;background:$userBg;}
+  overflow:hidden;background:$fgCard;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 .taskcard .thead{display:flex;align-items:center;gap:8px;
-  padding:10px 12px;background:rgba(0,0,0,0.04);
+  padding:10px 12px;background:transparent;
   border-bottom:1px solid $borderC;font-size:13px;font-weight:600;}
 .taskcard.done .thead{background:rgba(39,174,96,0.10);color:#27AE60;}
 .taskcard.err .thead{background:rgba(231,76,60,0.12);color:#E74C3C;}
