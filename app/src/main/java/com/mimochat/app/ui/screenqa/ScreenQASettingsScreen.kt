@@ -170,13 +170,7 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
             // 自动模式
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("自动模式", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = config.autoMode,
-                            onCheckedChange = { scope.launch { repo.setAutoMode(it) } }
-                        )
-                    }
+                    Text("自动模式", style = MaterialTheme.typography.labelMedium)
                     Text(
                         "开启后：点悬浮球 → 后台截屏 → 按「当前方案」压缩并提问 → " +
                             "答案通过系统通知返回（不打开 App）。\n" +

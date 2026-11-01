@@ -29,7 +29,7 @@ data class QAPlan(
 
 data class ScreenQAConfig(
     val enabled: Boolean = false,
-    val autoMode: Boolean = false,
+    val autoMode: Boolean = true,
     val activePlanId: Long = -1L,
     val plans: List<QAPlan> = emptyList()
 )
@@ -47,7 +47,7 @@ class ScreenQARepository(private val context: Context) {
     val config: Flow<ScreenQAConfig> = context.screenQaDataStore.data.map { p ->
         ScreenQAConfig(
             enabled = p[Keys.ENABLED] ?: false,
-            autoMode = p[Keys.AUTO] ?: false,
+            autoMode = p[Keys.AUTO] ?: true,
             activePlanId = p[Keys.ACTIVE_PLAN]?.toLongOrNull() ?: -1L,
             plans = parsePlans(p[Keys.PLANS] ?: "[]")
         )
