@@ -261,6 +261,9 @@ fun SettingsScreen(onBack: () -> Unit) {
                     OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
                         Text("MiMoCode 部署与智能体模式使用")
                     }
+                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                        Text("屏幕问答使用")
+                    }
                 }
             }
         }

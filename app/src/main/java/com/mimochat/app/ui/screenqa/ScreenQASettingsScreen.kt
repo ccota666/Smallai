@@ -159,11 +159,9 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
                             Button(onClick = { ensureOverlayThenProjection() }) { Text("启动悬浮球") }
                         }
                     }
-                    Text(
-                        "点击「启动悬浮球」才启动；App 重启不会自动常驻，避免后台残留「屏幕共享」。首次启动需授权悬浮窗与截屏。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                        Text("屏幕问答使用教程")
+                    }
                 }
             }
 
