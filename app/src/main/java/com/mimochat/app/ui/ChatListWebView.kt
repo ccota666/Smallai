@@ -357,7 +357,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs{position:fixed;inset:0;background:$fsBg;z-index:9999;display:none;
   flex-direction:column;overflow:hidden;}
 #fs.zoomed{overflow:visible;}
-#fs.on{display:flex;touch-action:none;}
+#fs.on{display:flex;touch-action:none;overflow:visible;}
 #fs.on *,#fs.on *::before,#fs.on *::after{touch-action:none;}
 #fs .fs-top{display:flex;justify-content:space-between;align-items:center;
   padding:36px 16px 4px;gap:10px;flex-wrap:wrap;
@@ -365,10 +365,10 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   position:relative;z-index:20;background:inherit;}
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
-#fs .fs-body{padding:2px 10px 40px;overflow:hidden;touch-action:none;position:relative;}
+#fs .fs-body{padding:2px 10px 40px;overflow:visible;touch-action:none;position:relative;}
 #fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
-#fs.zoomed .fs-body{overflow:visible;}
+
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
 #fs img{max-width:100%;max-height:70vh;object-fit:contain;}
 #fs .mermaid svg{max-width:100%;height:auto;}
