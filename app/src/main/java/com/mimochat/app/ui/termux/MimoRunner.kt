@@ -104,7 +104,7 @@ object MimoRunner {
             "echo WORK=$work >> $GUEST_DIR/$log",
             "echo HOME=${'$'}MIMOCODE_HOME >> $GUEST_DIR/$log",
             // 模型格式: provider/model，缺 provider 补 xiaomi/
-            "timeout 300 $MIMO_BIN run --yolo " + modelFlag +
+            "timeout 300 $MIMO_BIN run --yolo --dir $work " + modelFlag +
                 "'请把产出文件保存到当前工作目录。任务：$q2' < /dev/null 2>&1 | tee -a $GUEST_DIR/$log &",
             "echo ${'$'}! > $GUEST_DIR/$pidf",
             "wait",

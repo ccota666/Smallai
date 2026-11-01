@@ -633,9 +633,10 @@ function bindFsGestures(){
     if (e.touches.length === 2 && pinchDist > 0){
       e.preventDefault();
       var d = distOf(e.touches);
-      var rect = el.getBoundingClientRect();
-      var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      // 用 offsetLeft/offsetTop（未变换的布局位置），不用 getBoundingClientRect（包含变换偏移）
+      var bx = el.offsetLeft, by = el.offsetTop;
+      var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - bx;
+      var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - by;
       var s0 = fsS;
       var s1 = Math.min(6, Math.max(1, s0 * (d / pinchDist)));
       if (s1 !== s0){
