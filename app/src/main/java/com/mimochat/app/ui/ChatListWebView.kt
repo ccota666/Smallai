@@ -365,6 +365,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
 #fs .fs-body{padding:2px 10px 40px;overflow:hidden;touch-action:none;position:relative;}
+#fs .fs-body *{pointer-events:auto !important;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 #fs.zoomed .fs-body{overflow:visible;}
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
@@ -604,59 +605,41 @@ function distOf(t){
 
 function bindFsGestures(){
   var el = document.getElementById('fsBody');
-  if (!el || el.__gest) return;
-  el.__gest = true;
-
-  // 用 pointer 事件（WebView 兼容更好），touch-action:none 已在 CSS 中禁止默认手势
-  var pts = {};   // pointerId -> {x, y}
-  var pCount = 0;
-  var baseDist = 0, baseS = 1;
-  var baseMidX = 0, baseMidY = 0;
-  var baseFsX = 0, baseFsY = 0;
+  if (!el) return;
+  if (el.__gest) { el.__gest(); }  // 先解除旧监听器
+  var pts = {};
+  var baseDist = 0, baseS = 1, baseFsX = 0, baseFsY = 0, baseMidX = 0, baseMidY = 0;
   var panId = -1, panX = 0, panY = 0;
 
-  function ptArr(){ return Object.keys(pts).map(function(k){ return pts[k]; }); }
+  function ptArr(){ var a = []; for (var k in pts) a.push(pts[k]); return a; }
 
-  el.addEventListener('pointerdown', function(e){
+  function onDown(e){
     e.preventDefault();
+    e.stopPropagation();
     pts[e.pointerId] = {x: e.clientX, y: e.clientY};
-    pCount = Object.keys(pts).length;
-    if (pCount === 2){
-      var a = ptArr();
+    var a = ptArr();
+    if (a.length === 2){
       baseDist = Math.sqrt((a[0].x-a[1].x)*(a[0].x-a[1].x)+(a[0].y-a[1].y)*(a[0].y-a[1].y)) || 1;
-      baseS = fsS;
-      baseMidX = (a[0].x + a[1].x) / 2;
-      baseMidY = (a[0].y + a[1].y) / 2;
-      baseFsX = fsX;
-      baseFsY = fsY;
+      baseS = fsS; baseFsX = fsX; baseFsY = fsY;
+      baseMidX = (a[0].x+a[1].x)/2; baseMidY = (a[0].y+a[1].y)/2;
       panId = -1;
-    } else if (pCount === 1 && fsS > 1.01){
-      panId = e.pointerId;
-      panX = e.clientX;
-      panY = e.clientY;
+    } else if (a.length === 1 && fsS > 1.01){
+      panId = e.pointerId; panX = e.clientX; panY = e.clientY;
     }
-  }, {passive:false});
-
-  el.addEventListener('pointermove', function(e){
+  }
+  function onMove(e){
     if (!pts[e.pointerId]) return;
     e.preventDefault();
+    e.stopPropagation();
     pts[e.pointerId] = {x: e.clientX, y: e.clientY};
     var a = ptArr();
     if (a.length === 2 && baseDist > 1){
       var d = Math.sqrt((a[0].x-a[1].x)*(a[0].x-a[1].x)+(a[0].y-a[1].y)*(a[0].y-a[1].y)) || 1;
-      var s1 = baseS * (d / baseDist);
-      s1 = Math.min(8, Math.max(0.3, s1));
-      var mx = (a[0].x + a[1].x) / 2;
-      var my = (a[0].y + a[1].y) / 2;
-      // 以初始捰合中点为锚点
+      var s1 = Math.min(8, Math.max(0.3, baseS * (d / baseDist)));
       var bx = el.offsetLeft, by = el.offsetTop;
-      var amx = mx - bx, amy = my - by;
-      var bmx = baseMidX - bx, bmy = baseMidY - by;
-      fsX = amx - (bmx - baseFsX) * (s1 / baseS) - (amx - bmx) * (s1 / baseS) + (amx - bmx);
-      fsY = amy - (bmy - baseFsY) * (s1 / baseS) - (amy - bmy) * (s1 / baseS) + (amy - bmy);
-      // 简化：绕当前中点缩放
-      fsX = amx - (amx - baseFsX) * (s1 / baseS);
-      fsY = amy - (amy - baseFsY) * (s1 / baseS);
+      var amx = (a[0].x+a[1].x)/2 - bx, amy = (a[0].y+a[1].y)/2 - by;
+      fsX = amx - (baseMidX - bx - baseFsX) * (s1 / baseS);
+      fsY = amy - (baseMidY - by - baseFsY) * (s1 / baseS);
       fsS = s1;
       var fsEl = document.getElementById('fs');
       if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
@@ -664,22 +647,30 @@ function bindFsGestures(){
       if (rBtn) rBtn.style.display = fsS > 1.05 ? '' : 'none';
       applyFsTransform();
     } else if (a.length === 1 && fsS > 1.01 && panId === e.pointerId){
-      fsX += e.clientX - panX;
-      fsY += e.clientY - panY;
-      panX = e.clientX;
-      panY = e.clientY;
+      fsX += e.clientX - panX; fsY += e.clientY - panY;
+      panX = e.clientX; panY = e.clientY;
       applyFsTransform();
     }
-  }, {passive:false});
-
-  function releasePointer(e){
-    delete pts[e.pointerId];
-    pCount = Object.keys(pts).length;
-    if (pCount < 2) { baseDist = 0; }
-    if (pCount < 1) panId = -1;
   }
-  el.addEventListener('pointerup', releasePointer, {passive:true});
-  el.addEventListener('pointercancel', releasePointer, {passive:true});
+  function onUp(e){
+    delete pts[e.pointerId];
+    if (Object.keys(pts).length < 2) baseDist = 0;
+    if (Object.keys(pts).length < 1) panId = -1;
+  }
+
+  // 用捕获阶段（true）：拦截子元素（KaTeX/Mermaid）的事件
+  el.addEventListener('pointerdown', onDown, true);
+  el.addEventListener('pointermove', onMove, true);
+  el.addEventListener('pointerup', onUp, true);
+  el.addEventListener('pointercancel', onUp, true);
+
+  // 存清理函数，下次 bindFsGestures 时解除
+  el.__gest = function(){
+    el.removeEventListener('pointerdown', onDown, true);
+    el.removeEventListener('pointermove', onMove, true);
+    el.removeEventListener('pointerup', onUp, true);
+    el.removeEventListener('pointercancel', onUp, true);
+  };
 }
 
 var pinchDist = 0, panLast = null, pinchS0 = 1;
