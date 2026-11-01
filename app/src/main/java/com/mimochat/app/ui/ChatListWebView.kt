@@ -359,12 +359,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 #fs.zoomed{overflow:visible;}
 #fs.on{display:flex;}
 #fs .fs-top{display:flex;justify-content:space-between;align-items:center;
-  padding:36px 16px 10px;gap:10px;flex-wrap:wrap;
+  padding:36px 16px 4px;gap:10px;flex-wrap:wrap;
   padding-top:calc(36px + env(safe-area-inset-top,0px));
   position:relative;z-index:20;background:inherit;}
 #fs .fs-ops{display:flex;gap:8px;flex-wrap:wrap;}
 #fs .fs-ops button{min-height:40px;min-width:64px;font-size:14px;}
-#fs .fs-body{padding:6px 10px 40px;overflow:hidden;touch-action:none;position:relative;}
+#fs .fs-body{padding:2px 10px 40px;overflow:hidden;touch-action:none;position:relative;}
 #fs .fs-body pre,#fs .fs-body code{-webkit-user-select:text;user-select:text;}
 #fs.zoomed .fs-body{overflow:visible;}
 #fs .mathpad,#fs .mmpad,#fs pre{max-width:none;width:auto;box-sizing:border-box;overflow-x:auto;}
@@ -477,7 +477,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   <div class="fs-top">
     <span class="ttl" id="fsTtl"></span>
     <span class="fs-ops">
-      <button onclick="resetFsView()" style="border-color:#4CAF50;color:#4CAF50">归位</button>
+      <button id="resetBtn" onclick="resetFsView()" style="border-color:#4CAF50;color:#4CAF50;display:none">归位</button>
       <button id="rotBtn" onclick="toggleRotate()">横屏</button>
       <button onclick="closeFs()" style="border-color:#F44336;color:#F44336">退出</button>
     </span>
@@ -576,8 +576,6 @@ var pinchDist = 0, panLast = null, pinchS0 = 1;
 
 function fsBody(){ return document.getElementById('fsBody'); }
 
-function fsBody(){ return document.getElementById('fsBody'); }
-
 // 标准捰合缩放：无边界限制，以捰合中点为锚点
 function applyFsTransform(){
   var b = fsBody();
@@ -634,6 +632,8 @@ function bindFsGestures(){
       fsS = s1;
       var fsEl = document.getElementById('fs');
       if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
+      var rBtn = document.getElementById('resetBtn');
+      if (rBtn) rBtn.style.display = fsS > 1.05 ? '' : 'none';
       applyFsTransform();
     } else if (e.touches.length === 1 && fsS > 1.01 && panLast){
       e.preventDefault();
