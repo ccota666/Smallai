@@ -263,7 +263,7 @@ private fun chatShellHtml(
     val borderC = if (dark) "#333333" else "#E2E2E7"
     val quoteBg = if (dark) "#222222" else "#F6F6F8"
     val thinkBg = if (dark) "#1A2332" else "#EEF4FF"
-    val fsBg = if (dark) "#111111" else "#FFFFFF"
+    val fsBg = if (dark) "#000000" else "#FFFFFF"
     // 主题色 = 按钮同色（主色）
     val accent = if (dark) "#7EB6FF" else "#2F6FED"
     // 加粗：theme=主色 / rainbow=渐变 / colorful=按分段换色 / 自定义色值
