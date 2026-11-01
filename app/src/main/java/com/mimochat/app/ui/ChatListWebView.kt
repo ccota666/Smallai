@@ -477,6 +477,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   <div class="fs-top">
     <span class="ttl" id="fsTtl"></span>
     <span class="fs-ops">
+      <button onclick="resetFsView()">归位</button>
       <button id="rotBtn" onclick="toggleRotate()">横屏</button>
       <button onclick="closeFs()">退出</button>
     </span>
@@ -575,38 +576,95 @@ var pinchDist = 0, panLast = null, pinchS0 = 1;
 
 function fsBody(){ return document.getElementById('fsBody'); }
 
-// 获取元素未变换时的左上角坐标（视口坐标）
-function fsOrigin(){
-  var b = fsBody();
-  if (!b) return {x:0, y:0};
-  var r = b.getBoundingClientRect();
-  return {x: r.left - fsX, y: r.top - fsY};
-}
+function fsBody(){ return document.getElementById('fsBody'); }
 
-function clampFs(){
-  var b = fsBody();
-  if (!b) return;
-  var o = fsOrigin();
-  var w = b.offsetWidth * fsS;
-  var h = b.offsetHeight * fsS;
-  var vw = window.innerWidth, vh = window.innerHeight;
-  // 内容比视口小居中，大则夹紧边界
-  if (w <= vw) { fsX = (vw - w) / 2 - o.x; }
-  else { fsX = Math.max(vw - w - o.x, Math.min(-o.x, fsX)); }
-  if (h <= vh) { fsY = (vh - h) / 2 - o.y; }
-  else { fsY = Math.max(vh - h - o.y, Math.min(-o.y, fsY)); }
-}
-
+// 标准捰合缩放：无边界限制，以捰合中点为锚点
 function applyFsTransform(){
   var b = fsBody();
   if (!b) return;
-  clampFs();
   b.style.transformOrigin = '0 0';
   b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
 }
 
 function resetFsView(){
-  fsS = 1; fsX = 0; fsY = 0; pinchDist = 0; panLast = null;
+  fsS = 1; fsX = 0; fsY = 0; pinchDist = 0; pinchS0 = 1; panLast = null;
+  var b = fsBody();
+  if (b){
+    b.style.transform = '';
+    b.style.transformOrigin = '';
+    b.style.width = '';
+  }
+  var fsEl = document.getElementById('fs');
+  if (fsEl) fsEl.classList.remove('zoomed');
+}
+
+function distOf(t){
+  var dx = t[0].clientX - t[1].clientX;
+  var dy = t[0].clientY - t[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy) || 1;
+}
+
+function bindFsGestures(){
+  var el = document.getElementById('fsBody');
+  if (!el || el.__gest) return;
+  el.__gest = true;
+
+  el.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2){
+      pinchDist = distOf(e.touches);
+      pinchS0 = fsS;
+      panLast = null;
+    } else if (e.touches.length === 1 && fsS > 1.01){
+      panLast = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+    }
+  }, {passive:true});
+
+  el.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2 && pinchDist > 1){
+      e.preventDefault();
+      var d = distOf(e.touches);
+      var s1 = pinchS0 * (d / pinchDist);
+      s1 = Math.min(8, Math.max(0.3, s1));
+      // 捰合中点为锚点
+      var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      fsX = mx - (mx - fsX) * (s1 / fsS);
+      fsY = my - (my - fsY) * (s1 / fsS);
+      fsS = s1;
+      var fsEl = document.getElementById('fs');
+      if (fsEl) { if (fsS > 1.05) fsEl.classList.add('zoomed'); else fsEl.classList.remove('zoomed'); }
+      applyFsTransform();
+    } else if (e.touches.length === 1 && fsS > 1.01 && panLast){
+      e.preventDefault();
+      fsX += e.touches[0].clientX - panLast.x;
+      fsY += e.touches[0].clientY - panLast.y;
+      panLast = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+      applyFsTransform();
+    }
+  }, {passive:false});
+
+  el.addEventListener('touchend', function(e){
+    if (e.touches.length < 2) { pinchDist = 0; pinchS0 = 1; }
+    if (e.touches.length < 1) panLast = null;
+  }, {passive:true});
+}
+
+var pinchDist = 0, panLast = null, pinchS0 = 1;
+
+function fsBody(){ return document.getElementById('fsBody'); }
+
+function fsBody(){ return document.getElementById('fsBody'); }
+
+// 标准捰合缩放：无边界限制，以捰合中点为锚点
+function applyFsTransform(){
+  var b = fsBody();
+  if (!b) return;
+  b.style.transformOrigin = '0 0';
+  b.style.transform = 'translate(' + fsX + 'px,' + fsY + 'px) scale(' + fsS + ')';
+}
+
+function resetFsView(){
+  fsS = 1; fsX = 0; fsY = 0; pinchDist = 0; pinchS0 = 1; panLast = null;
   var b = fsBody();
   if (b){
     b.style.transform = '';
