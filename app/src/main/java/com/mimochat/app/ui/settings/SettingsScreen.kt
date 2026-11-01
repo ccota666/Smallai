@@ -139,6 +139,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 SettingsNavCard("屏幕问答", "悬浮球截屏") { showScreenQA = true }
                 SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
                 SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
+                SettingsNavCard("使用教程", "API 获取、部署与智能体") { settingsPage = 4 }
             } else {
 
 
@@ -150,16 +151,19 @@ fun SettingsScreen(onBack: () -> Unit) {
                         "https://token-plan-cn.xiaomimimo.com/v1" to "Token Plan（cn）"
                     )
                     urlPresets.forEach { (u, name) ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = baseUrl.trimEnd('/') == u,
-                                onClick = { baseUrl = u; vm.setBaseUrl(u) }
-                            )
-                            Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = baseUrl.trimEnd('/') == u,
+                                    onClick = { baseUrl = u; vm.setBaseUrl(u) }
+                                )
+                                Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
+                            }
                             if (name.contains("Token Plan")) {
                                 Text("最好不要使用，详情见官网使用条例",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFE74C3C))
+                                    color = Color(0xFFE74C3C),
+                                    modifier = Modifier.padding(start = 32.dp))
                             }
                         }
                     }

@@ -985,12 +985,7 @@ private fun EmptyState(model: String, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "当前模型：$model",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+
     }
 }
 
