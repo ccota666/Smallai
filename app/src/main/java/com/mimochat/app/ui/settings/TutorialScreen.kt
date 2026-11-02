@@ -1,6 +1,5 @@
 package com.mimochat.app.ui.settings
 
-import android.annotation.SuppressLint
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +27,7 @@ fun TutorialScreen(
             TopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
-                    AppIconButton(onClick = onBack, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "\u8fd4\u56de")
+                    AppIconButton(onClick = onBack, icon = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "back")
                 }
             )
         }
@@ -41,9 +40,9 @@ fun TutorialScreen(
                     settings.domStorageEnabled = true
                     settings.allowFileAccess = true
                     settings.allowContentAccess = true
-                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    setBackgroundColor(android.graphics.Color.WHITE)
                     webViewClient = WebViewClient()
-                    val html = loadTutorialHtml(ctx, tutorialId)
+                    val html = loadTutorialHtml(tutorialId)
                     loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null)
                 }
             }
@@ -51,53 +50,54 @@ fun TutorialScreen(
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
-private fun loadTutorialHtml(context: android.content.Context, id: String): String {
+private fun loadTutorialHtml(id: String): String {
     return when (id) {
         "api" -> apiTutorialHtml()
-        else -> "<h2>\u6559\u7a0b\u5185\u5bb9\u5f85\u66f4\u65b0</h2>"
+        "mimocode" -> mimocodeTutorialHtml()
+        "screenqa" -> screenQaTutorialHtml()
+        else -> "<h2>教程内容待更新</h2>"
     }
 }
 
-private fun apiTutorialHtml(): String {
-    val img = { name: String, width: String ->
-        if (width.isNotEmpty()) "<img src=\"file:///android_asset/tutorials/$name\" style=\"max-width:${width}px;width:100%;border-radius:8px;margin:8px 0;\"/>"
-        else "<img src=\"file:///android_asset/tutorials/$name\" style=\"max-width:100%;border-radius:8px;margin:8px 0;\"/>"
-    }
-    return """<!doctype html>
+private fun img(name: String, w: String = ""): String {
+    val style = if (w.isNotEmpty()) "max-width:${w}px;width:100%" else "max-width:100%"
+    return "<img src=\"file:///android_asset/tutorials/$name\" style=\"$style;border-radius:8px;margin:8px 0;display:block;\"/>"
+}
+
+private val htmlHead = """<!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{font-family:-apple-system,sans-serif;padding:16px;line-height:1.7;color:#222;background:#fff;}
-h2{font-size:18px;margin:20px 0 10px;}
+body{font-family:-apple-system,sans-serif;padding:16px;line-height:1.8;color:#222;background:#fff;}
 h1{font-size:20px;margin:24px 0 12px;}
+h2{font-size:17px;margin:20px 0 10px;}
 a{color:#2F6FED;}
 li{margin:6px 0;}
-img{display:block;margin:8px 0;}
+img{border-radius:8px;}
 </style></head><body>
+"""
 
-<h2>1. \u8fdb\u5165 Xiaomi Mimo \u5f00\u653e\u5e73\u53f0\u5b98\u7f51<a href="https://platform.xiaomimimo.com/">platform.xiaomimimo.com</a></h2>
+private val htmlTail = "</body></html>"
 
-<h2>2. \u8fdb\u5165\u63a7\u5236\u53f0</h2>
-<p><b>\u684c\u9762\u7aef\uff1a</b></p>
-${img("PixPin_2026-11-02_09-34-18.png", "286")}
-<p><b>\u624b\u673a\u7aef\uff1a</b></p>
-${img("PixPin_2026-11-02_09-40-28.png", "386")}
+private fun apiTutorialHtml(): String = htmlHead + """
+<h2>1. 进入Xiaomi Mimo开放平台官网<a href="https://platform.xiaomimimo.com/">platform.xiaomimimo.com</a></h2>
+<h2>2. 进入控制台</h2>
+<p><b>桌面端：</b></p>
+""" + img("PixPin_2026-11-02_09-34-18.png", "286") + """
+<p><b>手机端：</b></p>
+""" + img("PixPin_2026-11-02_09-40-28.png", "386") + """
+<h2>3. 登录获取 API Keys</h2>
+""" + img("PixPin_2026-11-02_12-53-24.png") + """
+<p><b>API Keys</b> 是使用账户余额按量计费使用，API Key获取：</p>
+""" + img("PixPin_2026-11-02_09-59-15.png", "189") + """
+<p><b>Token Plan</b> 是订阅使用，注意下方使用条例可能有使用风险，建议只在 mimo code 使用，API Keys获取：</p>
+""" + img("PixPin_2026-11-02_10-02-13.png", "273") + """
+<h2>4. 填入应用，即可正常与大模型对话</h2>
+""" + img("PixPin_2026-11-02_12-51-03.png") + """
+<h1>附：调用其他模型（如deepseek）</h1>
+<h2>1. 进入deepseek官网获取api keys，查看官网文档修改 Base URL，并填入模型名，即可使用</h2>
+""" + img("PixPin_2026-11-02_13-09-07.png", "262") + htmlTail
 
-<h2>3. \u767b\u5f55\u83b7\u53d6 API Keys</h2>
-${img("PixPin_2026-11-02_12-53-24.png", "")}
-<p><b>API Keys</b>\u662f\u4f7f\u7528\u8d26\u6237\u4f59\u989d\u6309\u91cf\u8ba1\u8d39\u4f7f\u7528\uff0cAPI Key\u83b7\u53d6\uff1a</p>
-${img("PixPin_2026-11-02_09-59-15.png", "189")}
-<p><b>Token Plan</b> \u662f\u8ba2\u9605\u4f7f\u7528\uff0c\u6ce8\u610f\u4e0b\u65b9\u4f7f\u7528\u6761\u4f8b\u53ef\u80fd\u6709\u4f7f\u7528\u98ce\u9669\uff0c\u5efa\u8bae\u53ea\u5728 mimo code \u4f7f\u7528\uff0cAPI Keys\u83b7\u53d6\uff1a</p>
-${img("PixPin_2026-11-02_10-02-13.png", "273")}
+private fun mimocodeTutorialHtml(): String = htmlHead + "<h2>教程内容待更新</h2>" + htmlTail
 
-<h2>4. \u586b\u5165\u5e94\u7528\uff0c\u5373\u53ef\u6b63\u5e38\u4e0e\u5927\u6a21\u578b\u5bf9\u8bdd</h2>
-${img("PixPin_2026-11-02_12-51-03.png", "")}
-
-<h1>\u9644\uff1a\u8c03\u7528\u5176\u4ed6\u6a21\u578b\uff08\u5982 deepseek\uff09</h1>
-
-<h2>1. \u8fdb\u5165 deepseek \u5b98\u7f51\u83b7\u53d6 api keys\uff0c\u67e5\u770b\u5b98\u7f51\u6587\u6863\u4fee\u6539 Base URL\uff0c\u5e76\u586b\u5165\u6a21\u578b\u540d\uff0c\u5373\u53ef\u4f7f\u7528</h2>
-${img("PixPin_2026-11-02_13-09-07.png", "262")}
-
-</body></html>"""
-}
+private fun screenQaTutorialHtml(): String = htmlHead + "<h2>教程内容待更新</h2>" + htmlTail

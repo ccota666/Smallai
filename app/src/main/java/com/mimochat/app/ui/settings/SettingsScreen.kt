@@ -77,8 +77,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     var settingsPage by remember { mutableStateOf(-1) }
     var showTutorial by remember { mutableStateOf("") }
     var showScreenQA by remember { mutableStateOf(false) }
-    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA) {
-        if (showScreenQA) showScreenQA = false
+    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA || showTutorial.isNotEmpty()) {
+        if (showTutorial.isNotEmpty()) { showTutorial = ""; settingsPage = 4 }
+        else if (showScreenQA) showScreenQA = false
         else settingsPage = -1
     }
     if (showTutorial.isNotEmpty()) {
@@ -89,7 +90,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 else -> "教程"
             },
             tutorialId = showTutorial,
-            onBack = { showTutorial = "" }
+            onBack = { showTutorial = ""; settingsPage = 4 }
         )
         return
     }
