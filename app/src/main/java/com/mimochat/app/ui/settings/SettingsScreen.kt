@@ -76,6 +76,7 @@ import com.mimochat.app.ui.AppSlider
 fun SettingsScreen(onBack: () -> Unit) {
     var settingsPage by remember { mutableStateOf(-1) }
     var showTutorial by remember { mutableStateOf("") }
+    var showAbout by remember { mutableStateOf(false) }
     var showScreenQA by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA || showTutorial.isNotEmpty()) {
         if (showTutorial.isNotEmpty()) { showTutorial = ""; settingsPage = 4 }
@@ -156,6 +157,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
                 SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
                 SettingsNavCard("使用教程", "API 获取、部署与智能体") { settingsPage = 4 }
+                SettingsNavCard("关于", "作者、隐私、开源许可") { showAbout = true }
             } else {
 
 
@@ -299,7 +301,7 @@ if (settingsPage == 3) {
 }
 
 @Composable
-private fun SettingsSectionCard(content: @Composable ColumnScope.() -> Unit) {
+fun SettingsSectionCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -310,7 +312,7 @@ private fun SettingsSectionCard(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 @Composable
-private fun SettingsNavCard(title: String, subtitle: String, onClick: () -> Unit) {
+fun SettingsNavCard(title: String, subtitle: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),

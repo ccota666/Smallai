@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavType
@@ -33,6 +34,17 @@ class MainActivity : ComponentActivity() {
             val app = application as MiMoApplication
             val settings by app.settingsRepository.settings.collectAsState(initial = AppSettings())
             MiMoChatTheme(settings) {
+                val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+                var firstLaunch by remember { mutableStateOf(!prefs.getBoolean("onboarded", false)) }
+                if (firstLaunch) {
+                    com.mimochat.app.ui.FirstLaunchScreen(
+                        onAgree = {
+                            prefs.edit().putBoolean("onboarded", true).apply()
+                            firstLaunch = false
+                        }
+                    )
+                    return@MiMoChatTheme
+                }
                 val nav = rememberNavController()
                 // 记住最近打开的对话：从列表返回时回到这里
                 var lastChatId by remember { mutableLongStateOf(-1L) }
