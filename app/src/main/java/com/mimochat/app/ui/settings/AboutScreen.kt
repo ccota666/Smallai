@@ -115,12 +115,22 @@ private fun privacyHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutS
 
 private fun licenseHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
     "<h1>开源代码许可</h1>" +
-    "<p>本应用使用了以下开源组件：</p>" +
-    "<h2>Jetpack Compose</h2><p>Apache License 2.0</p>" +
-    "<h2>Material Components for Android</h2><p>Apache License 2.0</p>" +
-    "<h2>Room Database</h2><p>Apache License 2.0</p>" +
-    "<h2>OkHttp</h2><p>Apache License 2.0</p>" +
-    "<h2>KaTeX</h2><p>MIT License</p>" +
-    "<h2>highlight.js</h2><p>BSD 3-Clause License</p>" +
-    "<h2>Mermaid</h2><p>MIT License</p>" +
+    "<p>本应用使用了以下开源组件，感谢各开源社区的贡献：</p>" +
+    "<h2>UI 框架</h2>" +
+    "<p>Jetpack Compose — Apache License 2.0</p>" +
+    "<p>Material 3 / Material Icons — Apache License 2.0</p>" +
+    "<p>Navigation Compose — Apache License 2.0</p>" +
+    "<h2>数据与网络</h2>" +
+    "<p>Room Database — Apache License 2.0</p>" +
+    "<p>DataStore Preferences — Apache License 2.0</p>" +
+    "<p>OkHttp — Apache License 2.0</p>" +
+    "<h2>运行时</h2>" +
+    "<p>Kotlin Coroutines — Apache License 2.0</p>" +
+    "<p>AndroidX (Core / Lifecycle / Activity) — Apache License 2.0</p>" +
+    "<h2>Web 渲染库</h2>" +
+    "<p>KaTeX（含字体）— MIT License</p>" +
+    "<p>highlight.js — BSD 3-Clause License</p>" +
+    "<p>Mermaid — MIT License</p>" +
+    "<h2>完整许可文本</h2>" +
+    "<p>各组件的完整许可文本请访问其官方仓库或文档。</p>" +
     "</body></html>"
