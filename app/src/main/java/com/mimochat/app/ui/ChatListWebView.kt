@@ -427,7 +427,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .actions button{border:none;background:transparent;color:$muted;
   border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer;display:inline-flex;
   align-items:center;justify-content:center;}
-.actions .act-danger{color:#E74C3C;border-color:#E74C3C;}
+.actions .act-danger{color:$muted;border:none;}
 .bhead button{border:1px solid $borderC;background:transparent;color:$muted;
   border-radius:8px;padding:5px 8px;cursor:pointer;display:inline-flex;
   align-items:center;line-height:0;}
