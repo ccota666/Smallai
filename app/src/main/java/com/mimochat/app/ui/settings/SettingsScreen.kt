@@ -242,6 +242,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+if (settingsPage == 3) {
+                SettingsSectionCard {
+                    OutlinedTextField(
+                        value = systemPrompt,
+                        onValueChange = { systemPrompt = it; vm.setSystemPrompt(it) },
+                        label = { Text("系统提示词（可选）") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 SettingsSectionCard {
                     OutlinedTextField(
@@ -252,7 +263,6 @@ fun SettingsScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-            }
             }
 
             if (settingsPage == 4) {
@@ -268,6 +278,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         Text("屏幕问答使用")
                     }
                 }
+            }
             }
         }
     }

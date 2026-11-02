@@ -247,10 +247,7 @@ class MiMoApi {
         return arr
     }
 
-    private fun systemPrompt(settings: AppSettings): String =
-        settings.systemPrompt.ifBlank {
-            "你是MiMo，小米公司研发的AI智能助手。请优先使用简体中文回答。"
-        }
+    private fun systemPrompt(settings: AppSettings): String = settings.systemPrompt
 
     private fun extractError(body: String): String = runCatching {
         JSONObject(body).optJSONObject("error")?.optString("message") ?: body

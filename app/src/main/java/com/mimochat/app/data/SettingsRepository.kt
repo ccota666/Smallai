@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 object PromptDefaults {
-    const val SYSTEM = "你是MiMo，小米公司研发的AI智能助手。请优先使用简体中文回答。"
+    const val SYSTEM = ""
     const val COMPRESS = """请把下面这段历史对话压缩为「前情提要」，不超过 300 字。
 保留：具体事实、数字、结论、用户偏好、未解决的问题。
 丢弃：寒暄、重复表述、助手的思考过程。
