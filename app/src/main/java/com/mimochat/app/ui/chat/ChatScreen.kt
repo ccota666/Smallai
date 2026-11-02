@@ -981,7 +981,7 @@ private fun EmptyState(model: String, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            "我们来创造什么 › _ ~ ;",
+            "我们来创造什么 › _ ~",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )

@@ -159,6 +159,7 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
                             Button(onClick = { ensureOverlayThenProjection() }) { Text("启动悬浮球") }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
                     OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
                         Text("屏幕问答使用教程")
                     }
@@ -191,11 +192,7 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
             }
 
             if (config.plans.isEmpty()) {
-                Text(
-                    "还没有方案。点「新建」创建：填名字、提示词、压缩率。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                
             }
 
             config.plans.forEach { plan ->

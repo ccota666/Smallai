@@ -30,7 +30,7 @@ data class AppSettings(
     val themeMode: Int = 2, // 0 = light, 1 = dark, 2 = system
     val fontSize: Float = 16f,
     val contextLimit: Int = 40,
-    val systemPrompt: String = PromptDefaults.SYSTEM,
+    val systemPrompt: String = "",
     val webSearch: Boolean = false,
     val deepThinking: Boolean = true,
     /** API 范围 [0, 1.5]；深度思考开启时服务端会强制 1.0 */

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -130,6 +131,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -157,7 +159,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                                     selected = baseUrl.trimEnd('/') == u,
                                     onClick = { baseUrl = u; vm.setBaseUrl(u) }
                                 )
-                                Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall)
+                                Text("$name  ·  $u", style = MaterialTheme.typography.bodySmall,
+                                    color = if (name.contains("Token Plan")) Color(0xFFE74C3C) else MaterialTheme.colorScheme.onSurface)
                             }
                             if (name.contains("Token Plan")) {
                                 Text("最好不要使用，详情见官网使用条例",
