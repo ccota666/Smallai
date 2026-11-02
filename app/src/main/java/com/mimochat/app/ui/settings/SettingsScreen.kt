@@ -78,10 +78,15 @@ fun SettingsScreen(onBack: () -> Unit) {
     var showTutorial by remember { mutableStateOf("") }
     var showAbout by remember { mutableStateOf(false) }
     var showScreenQA by remember { mutableStateOf(false) }
-    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA || showTutorial.isNotEmpty()) {
-        if (showTutorial.isNotEmpty()) { showTutorial = ""; settingsPage = 4 }
+    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA || showTutorial.isNotEmpty() || showAbout) {
+        if (showAbout) showAbout = false
+        else if (showTutorial.isNotEmpty()) { showTutorial = ""; settingsPage = 4 }
         else if (showScreenQA) showScreenQA = false
         else settingsPage = -1
+    }
+    if (showAbout) {
+        AboutScreen(onBack = { showAbout = false })
+        return
     }
     if (showTutorial.isNotEmpty()) {
         TutorialScreen(

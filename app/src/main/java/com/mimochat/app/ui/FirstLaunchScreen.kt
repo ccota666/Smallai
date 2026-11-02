@@ -27,7 +27,7 @@ fun FirstLaunchScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("欢迎使用 MiMo Chat", style = MaterialTheme.typography.headlineMedium,
+        Text("欢迎使用 Small AI", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
 

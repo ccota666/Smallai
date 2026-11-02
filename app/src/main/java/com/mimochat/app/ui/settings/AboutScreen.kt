@@ -41,7 +41,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsNavCard("MiMo Chat", "版本 1.0") { }
+            SettingsNavCard("Small AI", "版本 1.0") { }
             SettingsNavCard("软件作者", "") { showPage = "author" }
             SettingsNavCard("隐私说明", "") { showPage = "privacy" }
             SettingsNavCard("开源代码许可", "") { showPage = "license" }
@@ -99,8 +99,8 @@ p{margin:8px 0;}
 """
 
 private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<h1>MiMo Chat</h1>" +
-    "<p>MiMo Chat 是基于 MiMo API 的 Android 聊天应用。</p>" +
+    "<h1>Small AI</h1>" +
+    "<p>Small AI 是基于 MiMo API 的 Android 聊天应用。</p>" +
     "<h2>开发者</h2><p>TODO</p>" +
     "<h2>联系方式</h2><p>TODO</p>" +
     "</body></html>"
