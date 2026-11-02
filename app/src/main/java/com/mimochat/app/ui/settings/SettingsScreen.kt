@@ -190,8 +190,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    TextButton(onClick = { settingsPage = 4 }) {
-                        Text("MiMoCode 部署教程", style = MaterialTheme.typography.labelSmall)
+                    OutlinedButton(onClick = { settingsPage = 4 }, modifier = Modifier.fillMaxWidth()) {
+                        Text("MiMoCode 部署教程")
                     }
                 }
                 Spacer(Modifier.height(12.dp))
