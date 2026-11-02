@@ -65,7 +65,7 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScreenQASettingsScreen(onBack: () -> Unit) {
+fun ScreenQASettingsScreen(onBack: () -> Unit, onShowTutorial: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repo = remember { ScreenQARepository(context) }
@@ -160,7 +160,7 @@ fun ScreenQASettingsScreen(onBack: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { onShowTutorial() }, modifier = Modifier.fillMaxWidth()) {
                         Text("屏幕问答使用教程")
                     }
                 }

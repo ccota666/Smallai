@@ -101,7 +101,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         return
     }
     if (showScreenQA) {
-        com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
+        com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false }, onShowTutorial = { showTutorial = "screenqa" })
         return
     }
         val app = LocalContext.current.applicationContext as MiMoApplication
@@ -265,16 +265,6 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 if (settingsPage == 3) {
-                SettingsSectionCard {
-                    OutlinedTextField(
-                        value = systemPrompt,
-                        onValueChange = { systemPrompt = it; vm.setSystemPrompt(it) },
-                        label = { Text("系统提示词（可选）") },
-                        minLines = 3,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
                 SettingsSectionCard {
                     OutlinedTextField(
                         value = systemPrompt,
