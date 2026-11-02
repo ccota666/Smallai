@@ -98,6 +98,52 @@ private fun apiTutorialHtml(): String = htmlHead + """
 <h2>1. 进入deepseek官网获取api keys，查看官网文档修改 Base URL，并填入模型名，即可使用</h2>
 """ + img("PixPin_2026-11-02_13-09-07.png", "262") + htmlTail
 
-private fun mimocodeTutorialHtml(): String = htmlHead + "<h2>教程内容待更新</h2>" + htmlTail
+private fun mimocodeTutorialHtml(): String = htmlHead + """
+<h1>部署</h1>
+<h2>1. 从 F-Droid/GitHub 下载并安装 Termux</h2>
+<p>请勿下载谷歌商店版，不支持其他应用调用。</p>
+<h2>2. 执行命令</h2>
+<p><b>允许其他应用调用：</b></p>
+<pre><code>mkdir -p ~/.termux
+echo "allow-external-apps = true" &gt;&gt; ~/.termux/termux.properties
+termux-reload-settings</code></pre>
+<p><b>授权存储：</b></p>
+<pre><code>termux-setup-storage</code></pre>
+<p><b>更新包索引，安装 proot-distro：</b></p>
+<pre><code>pkg update
+pkg install -y proot-distro</code></pre>
+<p><b>装 Ubuntu：</b></p>
+<pre><code>proot-distro install ubuntu</code></pre>
+<p><b>进入 Ubuntu：</b></p>
+<pre><code>proot-distro login ubuntu</code></pre>
+<p>应该看到 <code>root@localhost:~#</code></p>
+<h2>Ubuntu 里装 MiMoCode</h2>
+<p><b>装 curl：</b></p>
+<pre><code>apt update &amp;&amp; apt install -y curl</code></pre>
+<p><b>运行官方安装脚本：</b></p>
+<pre><code>curl -fsSL https://mimo.xiaomi.com/install | bash</code></pre>
+<p><b>加 PATH：</b></p>
+<pre><code>echo 'export PATH=${'$'}HOME/.mimocode/bin:${'$'}PATH' &gt;&gt; ~/.bashrc
+source ~/.bashrc
+mimo --version</code></pre>
+<p>出版本号（如 <code>0.1.16</code>）就成功了。</p>
+<p><b>登录并验证：</b></p>
+<pre><code>mimo auth login</code></pre>
+<p>然后选择模型提供商，按提示授权/填写 key。</p>
+<h1>使用</h1>
+<p>设置 Termux 后台限制为无限制：</p>
+<ul>
+<li>打开 Termux 在后台</li>
+<li>在聊天框选中智能体按键</li>
+<li>顶部选择使用支持的模型</li>
+<li>发送即可开始任务</li>
+</ul>
+""" + htmlTail
 
-private fun screenQaTutorialHtml(): String = htmlHead + "<h2>教程内容待更新</h2>" + htmlTail
+private fun screenQaTutorialHtml(): String = htmlHead + """
+<h2>1. 新建方案，设置名称/提示词/使用模型/图片压缩率</h2>
+<h2>2. 选择方案</h2>
+<h2>3. 点击启动悬浮球，按提示授权权限，注意共享屏幕选择整个屏幕</h2>
+<h2>4. 启动悬浮球后，点击悬浮球，自动截取屏幕上传截图与提示词给模型，然后通过系统弹窗返回答案</h2>
+<h2>5. 长按悬浮球即可关闭</h2>
+""" + htmlTail
