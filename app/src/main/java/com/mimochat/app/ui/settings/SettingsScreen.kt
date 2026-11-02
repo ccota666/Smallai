@@ -75,10 +75,23 @@ import com.mimochat.app.ui.AppSlider
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     var settingsPage by remember { mutableStateOf(-1) }
+    var showTutorial by remember { mutableStateOf("") }
     var showScreenQA by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA) {
         if (showScreenQA) showScreenQA = false
         else settingsPage = -1
+    }
+    if (showTutorial.isNotEmpty()) {
+        TutorialScreen(
+            title = when (showTutorial) {
+                "api" -> "API 获取"
+                "mimocode" -> "MiMoCode 部署与智能体"
+                else -> "教程"
+            },
+            tutorialId = showTutorial,
+            onBack = { showTutorial = "" }
+        )
+        return
     }
     if (showScreenQA) {
         com.mimochat.app.ui.screenqa.ScreenQASettingsScreen(onBack = { showScreenQA = false })
@@ -185,7 +198,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedButton(onClick = { settingsPage = 4 }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { showTutorial = "api" }, modifier = Modifier.fillMaxWidth()) {
                         Text("获取 API Key 教程")
                     }
                     Text(
@@ -193,7 +206,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    OutlinedButton(onClick = { settingsPage = 4 }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { showTutorial = "mimocode" }, modifier = Modifier.fillMaxWidth()) {
                         Text("MiMoCode 部署教程")
                     }
                 }
@@ -268,13 +281,13 @@ if (settingsPage == 3) {
             if (settingsPage == 4) {
                 SettingsSectionCard {
                     Text("教程列表", style = MaterialTheme.typography.labelLarge)
-                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { showTutorial = "api" }, modifier = Modifier.fillMaxWidth()) {
                         Text("API 获取")
                     }
-                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { showTutorial = "mimocode" }, modifier = Modifier.fillMaxWidth()) {
                         Text("MiMoCode 部署与智能体模式使用")
                     }
-                    OutlinedButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { showTutorial = "screenqa" }, modifier = Modifier.fillMaxWidth()) {
                         Text("屏幕问答使用")
                     }
                 }
