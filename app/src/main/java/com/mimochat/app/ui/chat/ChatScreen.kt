@@ -568,6 +568,13 @@ fun ChatScreen(
                             reqTermuxPerm.launch(perm)
                         } else {
                             agentMode = true
+                            // 自动唤醒 Termux
+                            scope.launch {
+                                val alive = com.mimochat.app.ui.termux.MimoRunner.probe(context.applicationContext)
+                                if (!alive) {
+                                    com.mimochat.app.ui.termux.TermuxBridge.wakeThenRun(context, "echo ready")
+                                }
+                            }
                             Toast.makeText(context, "智能体模式已开启，发送即执行任务", Toast.LENGTH_SHORT).show()
                         }
                         }
