@@ -424,7 +424,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
 .att .name{font-size:10px;color:inherit;opacity:.75;max-width:76px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .actions{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
-.actions button{border:1px solid $borderC;background:transparent;color:$muted;
+.actions button{border:none;background:transparent;color:$muted;
   border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer;display:inline-flex;
   align-items:center;justify-content:center;}
 .actions .act-danger{color:#E74C3C;border-color:#E74C3C;}
