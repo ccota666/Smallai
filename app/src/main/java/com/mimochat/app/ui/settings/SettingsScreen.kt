@@ -160,7 +160,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (settingsPage == -1) {
                 SettingsNavCard("API 连接与模型", "接口、Key、模型") { settingsPage = 0 }
@@ -310,7 +310,7 @@ fun SettingsSectionCard(content: @Composable ColumnScope.() -> Unit) {
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
 }
 @Composable
@@ -321,7 +321,7 @@ fun SettingsNavCard(title: String, subtitle: String, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Text("›", style = MaterialTheme.typography.titleMedium)
         }

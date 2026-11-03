@@ -294,7 +294,7 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   overflow-x:hidden;
   font-family:-apple-system,'PingFang SC','Noto Sans SC',sans-serif;
   font-size:${fontSizeSp}px;line-height:1.7;--bc:$boldCss;--ac:$accent;}
-#list{padding:${(topCss*0.6).toInt()}px 14px ${(botCss*0.7).toInt()}px 14px;overflow-x:hidden;}
+#list{padding:${(topCss*0.6).toInt()}px 8px ${(botCss*0.7).toInt()}px 8px;overflow-x:hidden;}
 .msg{margin:10px 0;}
 .msg:first-child{margin-top:-12px;}
 .msg:last-child{margin-bottom:-8px;}
