@@ -58,6 +58,8 @@ class ChatRepository(
         db.messageDao().searchMessages(query)
 
     suspend fun getConversation(id: Long): Conversation? = db.conversationDao().getById(id)
+    suspend fun getAllConversations(): List<Conversation> = db.conversationDao().getAll()
+    suspend fun getMessages(convId: Long): List<ChatMessage> = db.messageDao().getByConversation(convId)
 
     suspend fun renameConversation(id: Long, title: String) {
         db.conversationDao().updateTitle(id, title, System.currentTimeMillis())

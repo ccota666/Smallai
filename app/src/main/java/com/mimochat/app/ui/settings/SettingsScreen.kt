@@ -77,12 +77,18 @@ fun SettingsScreen(onBack: () -> Unit) {
     var settingsPage by remember { mutableStateOf(-1) }
     var showTutorial by remember { mutableStateOf("") }
     var showAbout by remember { mutableStateOf(false) }
+    var showExport by remember { mutableStateOf(false) }
     var showScreenQA by remember { mutableStateOf(false) }
-    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA || showTutorial.isNotEmpty() || showAbout) {
-        if (showAbout) showAbout = false
+    androidx.activity.compose.BackHandler(enabled = settingsPage != -1 || showScreenQA || showTutorial.isNotEmpty() || showAbout || showExport) {
+        if (showExport) showExport = false
+        else if (showAbout) showAbout = false
         else if (showTutorial.isNotEmpty()) { showTutorial = ""; settingsPage = 4 }
         else if (showScreenQA) showScreenQA = false
         else settingsPage = -1
+    }
+    if (showExport) {
+        ChatExportScreen(onBack = { showExport = false })
+        return
     }
     if (showAbout) {
         AboutScreen(onBack = { showAbout = false })
@@ -162,6 +168,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 SettingsNavCard("外观", "主题、字体、加粗") { settingsPage = 2 }
                 SettingsNavCard("高级", "上下文、压缩、提示词") { settingsPage = 3 }
                 SettingsNavCard("使用教程", "API 获取、部署与智能体") { settingsPage = 4 }
+                SettingsNavCard("聊天记录", "导出、导入 JSON") { showExport = true }
                 SettingsNavCard("关于", "作者、隐私、开源许可") { showAbout = true }
             } else {
 
