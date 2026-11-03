@@ -342,7 +342,8 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   background:$quoteBg;color:$muted;border-radius:0 10px 10px 0;}
 .content hr.rule{border:none;height:0;margin:28px 2px 28px 2px;
   box-shadow:0 1px 2px rgba(0,0,0,0.18);border-top:1px solid rgba(128,128,128,0.35);}
-.content table{border-collapse:collapse;width:100%;margin:9px 0;font-size:0.92em;}
+.content .table-wrap{overflow-x:auto;margin:9px 0;-webkit-overflow-scrolling:touch;}
+.content table{border-collapse:collapse;width:100%;font-size:0.92em;}
 .content th,.content td{border:1px solid $borderC;padding:6px 9px;text-align:left;}
 .content th{background:$codeBg;font-weight:600;}
 .content strong{font-weight:700;color:var(--bc,inherit);}
@@ -1169,7 +1170,7 @@ function blockMd(src){
           tb += '<td>' + inlineMd(rows[r][c2] == null ? '' : rows[r][c2]) + '</td>';
         tb += '</tr>';
       }
-      out += '<table><thead><tr>' + th + '</tr></thead><tbody>' + tb + '</tbody></table>';
+      out += '<div class="table-wrap"><table><thead><tr>' + th + '</tr></thead><tbody>' + tb + '</tbody></table></div>';
       continue;
     }
     if (isQuote(line)){
