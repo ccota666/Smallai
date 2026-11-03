@@ -305,12 +305,12 @@ html,body{margin:0;padding:0;background:transparent;color:$fg;
   padding:6px 12px;border-radius:12px;
   word-break:break-word;}
 .msg.ai .bubble{max-width:100%;padding:0;border:none;background:transparent;}
-.content{margin:4px 0;overflow-wrap:break-word;}
+.content{margin:4px 0;overflow-wrap:break-word;line-height:1.7;}
 .content h1,.content h2,.content h3,.content h4,.content h5,.content h6{
-  margin:12px 0 7px;line-height:1.35;font-weight:700;color:inherit;}
+  margin:18px 0 10px;line-height:1.4;font-weight:700;color:inherit;}
 .content h1{font-size:1.3em;} .content h2{font-size:1.2em;}
 .content h3{font-size:1.1em;} .content h4{font-size:1.04em;}
-.content p{margin:12px 0;}
+.content p{margin:16px 0;line-height:1.75;}
 .content ul,.content ol{margin:10px 0 10px 0;padding:0;list-style:none;}
 .content li{margin:6px 0;padding:8px 12px;position:relative;
   background:rgba(128,128,128,0.07);border-radius:10px;}
