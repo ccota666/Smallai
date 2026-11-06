@@ -106,8 +106,8 @@ p{margin:8px 0;}
 """
 
 private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<h1>Small ai（小爱）</h1>" +
-    "<p>基于 MiMo API 的 Android AI 聊天应用，支持多模型对话、本地智能体执行、屏幕问答。</p>" +
+    "<h1>Small ai</h1>" +
+    "<p>适配 MiMo API 的 Android AI 聊天应用，支持多模型对话、本地智能体执行、屏幕问答。</p>" +
     "<h2>特性</h2>" +
     "<ul>" +
     "<li>多模型对话（MiMo API），Markdown/公式/图表渲染</li>" +
@@ -121,6 +121,8 @@ private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutSty
 private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
     "<h1>软件作者</h1>" +
     "<p>ccota@bilibili</p>" +
+    "<h2>致谢</h2>" +
+    "<p>开发过程使用了 DeepSeek Harness、MiMo Code 辅助开发</p>" +
     "<h2>开源</h2><p><a href=\"https://github.com/ccota666/Smallai\">github.com/ccota666/Smallai</a></p>" +
     "</body></html>"
 
@@ -134,6 +136,11 @@ private fun privacyHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutS
     "<p>存储、通知、悬浮窗、截屏等权限仅用于对应功能，不用于数据收集。</p>" +
     "<h2>第三方服务</h2>" +
     "<p>使用 MiMo API 等第三方模型服务时，相关数据使用受该服务的隐私政策约束。</p>" +
+    "<h2>免责声明</h2>" +
+    "<p>AI 生成内容可能有误，请注意核实与甄别，仅供参考。</p>" +
+    "<p>本应用为个人学习项目，开发过程使用了 AI 辅助，仅作为交流分享。作者水平有限，不保证无 bug、无功能异常，请自行妥善备份聊天记录等重要数据。</p>" +
+    "<p>请遵守大模型官网使用条例与文档，以及所调用第三方 API 服务的隐私政策。模型调用产生的费用，具体价格以各平台官网定价为准。</p>" +
+    "<p>请勿从其他途径下载应用。</p>" +
     "</body></html>"
 
 private fun licenseHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
@@ -156,4 +163,5 @@ private fun licenseHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutS
     "<p>Mermaid — MIT License</p>" +
     "<h2>完整许可文本</h2>" +
     "<p>各组件的完整许可文本请访问其官方仓库或文档。</p>" +
+    "<p style=\"color:#999;font-size:12px;\">注：本页内容由 AI 生成，如有疏漏十分抱歉。</p>" +
     "</body></html>"
