@@ -99,18 +99,29 @@ p{margin:8px 0;}
 """
 
 private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<h1>Small ai</h1>" +
-    "<p>Small ai 是基于 MiMo API 的 Android 聊天应用。</p>" +
-    "<h2>开发者</h2><p>TODO</p>" +
-    "<h2>联系方式</h2><p>TODO</p>" +
+    "<h1>Small ai（小爱）</h1>" +
+    "<p>基于 MiMo API 的 Android AI 聊天应用，支持多模型对话、本地智能体执行、屏幕问答。</p>" +
+    "<h2>特性</h2>" +
+    "<ul>" +
+    "<li>多模型对话（MiMo API），Markdown/公式/图表渲染</li>" +
+    "<li>智能体模式：本地 MiMoCode 执行任务，实时展示过程</li>" +
+    "<li>屏幕问答：悬浮球截屏提问，通知返回答案</li>" +
+    "<li>隐私优先：无隐藏提示词，数据本地存储</li>" +
+    "</ul>" +
+    "<h2>开发者</h2><p>ccota@bilibili</p>" +
+    "<h2>开源</h2><p><a href=\"https://github.com/ccota666/Smallai\">github.com/ccota666/Smallai</a></p>" +
     "</body></html>"
 
 private fun privacyHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
     "<h1>隐私说明</h1>" +
-    "<h2>数据收集</h2><p>本应用不收集任何个人数据。API Key 等敏感信息仅保存在设备本地。</p>" +
-    "<h2>网络请求</h2><p>聊天内容仅发送至用户配置的 API 服务端。智能体任务在本地 Termux 环境中执行。</p>" +
-    "<h2>权限使用</h2><p>存储、通知、悬浮窗、截屏等权限仅用于对应功能，不用于数据收集。</p>" +
-    "<h2>第三方服务</h2><p>使用 MiMo API 等第三方模型服务时，相关数据使用受该服务的隐私政策约束。</p>" +
+    "<h2>数据收集</h2>" +
+    "<p>本应用<b>不收集、不上传</b>你的任何个人信息，所有数据保存在本地。网络仅用于调用模型 API，不进行任何其他联网活动。</p>" +
+    "<h2>提示词透明</h2>" +
+    "<p>未向模型添加<b>任何隐藏提示词</b>，所有提示词均可在 [设置-高级] 查看与修改。</p>" +
+    "<h2>权限使用</h2>" +
+    "<p>存储、通知、悬浮窗、截屏等权限仅用于对应功能，不用于数据收集。</p>" +
+    "<h2>第三方服务</h2>" +
+    "<p>使用 MiMo API 等第三方模型服务时，相关数据使用受该服务的隐私政策约束。</p>" +
     "</body></html>"
 
 private fun licenseHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +

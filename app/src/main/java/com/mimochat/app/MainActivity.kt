@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,11 +37,24 @@ class MainActivity : ComponentActivity() {
             MiMoChatTheme(settings) {
                 val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
                 var firstLaunch by remember { mutableStateOf(!prefs.getBoolean("onboarded", false)) }
+                val reqPerms = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+                ) {}
                 if (firstLaunch) {
                     com.mimochat.app.ui.FirstLaunchScreen(
                         onAgree = {
                             prefs.edit().putBoolean("onboarded", true).apply()
                             firstLaunch = false
+                            // 申请权限（除录屏外，录屏需每次手动）
+                            val perms = arrayOf(
+                                android.Manifest.permission.CAMERA,
+                                android.Manifest.permission.RECORD_AUDIO,
+                                android.Manifest.permission.POST_NOTIFICATIONS
+                            )
+                            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                perms + android.Manifest.permission.READ_MEDIA_AUDIO
+                            }
+                            reqPerms.launch(perms)
                         }
                     )
                     return@MiMoChatTheme

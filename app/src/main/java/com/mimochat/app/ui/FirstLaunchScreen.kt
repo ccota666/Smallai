@@ -23,10 +23,10 @@ fun FirstLaunchScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
         Text("欢迎使用 Small ai", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(40.dp))
 
         InfoSection(title = "隐私") {
             InfoBullet("本应用不收集、不上传你的任何个人信息，所有数据保存在本地。网络仅用于调用模型 API，不进行任何其他联网活动。")
