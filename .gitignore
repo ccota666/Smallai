@@ -5,3 +5,8 @@ local.properties
 *.iml
 .DS_Store
 app/build/
+
+# Signing key - NEVER commit!
+keystore/
+*.jks
+*.keystore
