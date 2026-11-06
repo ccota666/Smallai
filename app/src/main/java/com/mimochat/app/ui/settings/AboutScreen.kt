@@ -120,11 +120,14 @@ private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutSty
     "</body></html>"
 
 private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<div style=\"text-align:center;padding-top:60px;\">" +
-    "<p style=\"font-size:18px;line-height:2.2;\">" +
-    "MiMo-V2.6-Pro<br/>MiMo-V2.6-Flash<br/>DeepSeek-V4.1-Flash<br/>ccota</p></div>" +
-    "<div style=\"position:fixed;bottom:20px;left:0;right:0;text-align:center;\">" +
-    "<p style=\"color:#999;font-size:12px;\">智能体：MiMo Desktop、DeepSeek Harness</p></div>" +
+    "<div style=\"display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;\">" +
+    "<p style=\"font-size:17px;line-height:2.2;margin:0;\">" +
+    "MiMo-V2.6-Pro<br/>" +
+    "MiMo-V2.6-Flash<br/>" +
+    "DeepSeek-V4.1-Flash<br/>" +
+    "<span style=\"color:#2F6FED;\">MiMo Desktop</span><br/>" +
+    "<span style=\"color:#2F6FED;\">DeepSeek Harness</span><br/>" +
+    "ccota</p></div>" +
     "</body></html>"
 
 private fun privacyHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
