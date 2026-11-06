@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.mimochat.app.ui.AppIconButton
 
@@ -77,25 +78,33 @@ private fun AboutDetailPage(page: String, onBack: () -> Unit) {
         }
     ) { padding ->
         if (page == "author") {
-            // 原生 Compose 居中显示
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("MiMo-V2.6-Pro", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(14.dp))
-                Text("MiMo-V2.6-Flash", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(14.dp))
-                Text("DeepSeek-V4.1-Flash", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(14.dp))
-                Text("MiMo Desktop", style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF2F6FED))
-                Spacer(Modifier.height(14.dp))
-                Text("DeepSeek Harness", style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF2F6FED))
-                Spacer(Modifier.height(20.dp))
-                Text("ccota", style = MaterialTheme.typography.titleMedium)
+            // 原生 Compose：真屏幕居中，显式 Spacer 控制行距
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val nameStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp)
+                    Text("MiMo-V2.6-Pro", style = nameStyle)
+                    Spacer(Modifier.height(22.dp))
+                    Text("MiMo-V2.6-Flash", style = nameStyle)
+                    Spacer(Modifier.height(22.dp))
+                    Text("DeepSeek-V4.1-Flash", style = nameStyle)
+                    Spacer(Modifier.height(22.dp))
+                    Text("MiMo Desktop", style = nameStyle, color = Color(0xFF2F6FED))
+                    Spacer(Modifier.height(22.dp))
+                    Text("DeepSeek Harness", style = nameStyle, color = Color(0xFF2F6FED))
+                    Spacer(Modifier.height(22.dp))
+                    Text("ccota", style = nameStyle)
+                }
+                Text(
+                    "2026年11月·地球",
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = padding.calculateBottomPadding() + 28.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = Color(0xFF999999)
+                )
             }
         } else {
             AndroidView(
