@@ -84,12 +84,17 @@ private fun AboutDetailPage(page: String, onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("MiMo-V2.6-Pro", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(14.dp))
                 Text("MiMo-V2.6-Flash", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(14.dp))
                 Text("DeepSeek-V4.1-Flash", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(14.dp))
                 Text("MiMo Desktop", style = MaterialTheme.typography.titleMedium,
                     color = Color(0xFF2F6FED))
+                Spacer(Modifier.height(14.dp))
                 Text("DeepSeek Harness", style = MaterialTheme.typography.titleMedium,
                     color = Color(0xFF2F6FED))
+                Spacer(Modifier.height(20.dp))
                 Text("ccota", style = MaterialTheme.typography.titleMedium)
             }
         } else {
