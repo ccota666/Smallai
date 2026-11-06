@@ -21,6 +21,11 @@ import com.mimochat.app.ui.AppIconButton
 fun AboutScreen(onBack: () -> Unit) {
     var showPage by remember { mutableStateOf("") }
 
+    // 拦截系统返回：子页返回关于主页
+    androidx.activity.compose.BackHandler(enabled = showPage.isNotEmpty()) {
+        showPage = ""
+    }
+
     if (showPage.isNotEmpty()) {
         AboutDetailPage(page = showPage, onBack = { showPage = "" })
         return
@@ -41,7 +46,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsNavCard("Small ai", "版本 1.0") { }
+            SettingsNavCard("Small ai", "应用介绍、版本 1.0") { showPage = "about" }
             SettingsNavCard("软件作者", "") { showPage = "author" }
             SettingsNavCard("隐私说明", "") { showPage = "privacy" }
             SettingsNavCard("开源代码许可", "") { showPage = "license" }
@@ -57,6 +62,7 @@ private fun AboutDetailPage(page: String, onBack: () -> Unit) {
             TopAppBar(
                 title = {
                     Text(when (page) {
+                        "about" -> "Small ai"
                         "author" -> "软件作者"
                         "privacy" -> "隐私说明"
                         "license" -> "开源代码许可"
@@ -77,6 +83,7 @@ private fun AboutDetailPage(page: String, onBack: () -> Unit) {
                     setBackgroundColor(android.graphics.Color.WHITE)
                     webViewClient = WebViewClient()
                     val html = when (page) {
+                        "about" -> aboutHtml()
                         "author" -> authorHtml()
                         "privacy" -> privacyHtml()
                         "license" -> licenseHtml()
@@ -98,7 +105,7 @@ p{margin:8px 0;}
 </style>
 """
 
-private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
+private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
     "<h1>Small ai（小爱）</h1>" +
     "<p>基于 MiMo API 的 Android AI 聊天应用，支持多模型对话、本地智能体执行、屏幕问答。</p>" +
     "<h2>特性</h2>" +
@@ -108,7 +115,12 @@ private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutSt
     "<li>屏幕问答：悬浮球截屏提问，通知返回答案</li>" +
     "<li>隐私优先：无隐藏提示词，数据本地存储</li>" +
     "</ul>" +
-    "<h2>开发者</h2><p>ccota@bilibili</p>" +
+    "<h2>版本</h2><p>1.0.0</p>" +
+    "</body></html>"
+
+private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
+    "<h1>软件作者</h1>" +
+    "<p>ccota@bilibili</p>" +
     "<h2>开源</h2><p><a href=\"https://github.com/ccota666/Smallai\">github.com/ccota666/Smallai</a></p>" +
     "</body></html>"
 
