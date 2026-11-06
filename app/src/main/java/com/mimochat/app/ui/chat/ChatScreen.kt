@@ -551,6 +551,22 @@ fun ChatScreen(
                 agentRunning = agentRunning,
                 onToggleAgent = {
                     if (!agentMode) {
+                        // 选中智能体即申请文件权限（All files access），用于读写共享目录
+                        if (android.os.Build.VERSION.SDK_INT >= 30 &&
+                            !android.os.Environment.isExternalStorageManager()) {
+                            try {
+                                context.startActivity(android.content.Intent(
+                                    android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    android.net.Uri.parse("package:${context.packageName}")
+                                ))
+                            } catch (_: Exception) {
+                                try {
+                                    context.startActivity(android.content.Intent(
+                                        android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                                    ))
+                                } catch (_: Exception) {}
+                            }
+                        }
                         val curModel = conversation?.model ?: settings.model
                         val isExpensive = com.mimochat.app.data.ModelsParser.isExpensive(
                             settings.models, curModel
