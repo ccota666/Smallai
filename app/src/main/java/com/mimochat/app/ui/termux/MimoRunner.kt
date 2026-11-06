@@ -30,15 +30,13 @@ object MimoRunner {
     suspend fun probe(context: Context, timeoutMs: Long = 4000): Boolean {
         val f = File(appOutDir(context), "bridge_probe.txt")
         f.delete()
-        val ok = TermuxBridge.runInBackground(context, "echo PONG > $HOST_DIR/bridge_probe.txt && chmod 666 $HOST_DIR/bridge_probe.txt")
+        val ok = TermuxBridge.runInBackground(context, "echo PONG > $HOST_DIR/bridge_probe.txt")
         if (!ok) return false
         val t0 = System.currentTimeMillis()
         while (System.currentTimeMillis() - t0 < timeoutMs) {
             kotlinx.coroutines.delay(300)
-            // exists() 为 true 不代表可读（scoped storage 下 open 可能 EACCES），必须兜住
-            val text = runCatching { if (f.exists()) f.readText() else null }.getOrNull()
-            if (text != null && text.contains("PONG")) {
-                runCatching { f.delete() }
+            if (f.exists() && f.readText().contains("PONG")) {
+                f.delete()
                 return true
             }
         }
@@ -102,7 +100,6 @@ object MimoRunner {
             "ln -sfn /root/.local/state/mimocode ${'$'}MIMOCODE_HOME/state",
             "for f in /root/.local/share/mimocode/*; do bn=${'$'}(basename ${'$'}f); if [ \"${'$'}bn\" != \"memory\" ]; then ln -sfn ${'$'}f ${'$'}MIMOCODE_HOME/data/${'$'}bn; fi; done",
             "echo START ${'$'}(date +%s) > $GUEST_DIR/$log",
-            "chmod 666 $GUEST_DIR/$log 2>/dev/null",
             "echo PWD=${'$'}(pwd) >> $GUEST_DIR/$log",
             "echo WORK=$work >> $GUEST_DIR/$log",
             "echo HOME=${'$'}MIMOCODE_HOME >> $GUEST_DIR/$log",
