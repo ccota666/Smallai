@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -75,24 +76,41 @@ private fun AboutDetailPage(page: String, onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        AndroidView(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    settings.javaScriptEnabled = false
-                    setBackgroundColor(android.graphics.Color.WHITE)
-                    webViewClient = WebViewClient()
-                    val html = when (page) {
-                        "about" -> aboutHtml()
-                        "author" -> authorHtml()
-                        "privacy" -> privacyHtml()
-                        "license" -> licenseHtml()
-                        else -> "<p>...</p>"
-                    }
-                    loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
-                }
+        if (page == "author") {
+            // 原生 Compose 居中显示
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("MiMo-V2.6-Pro", style = MaterialTheme.typography.titleMedium)
+                Text("MiMo-V2.6-Flash", style = MaterialTheme.typography.titleMedium)
+                Text("DeepSeek-V4.1-Flash", style = MaterialTheme.typography.titleMedium)
+                Text("MiMo Desktop", style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF2F6FED))
+                Text("DeepSeek Harness", style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF2F6FED))
+                Text("ccota", style = MaterialTheme.typography.titleMedium)
             }
-        )
+        } else {
+            AndroidView(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        settings.javaScriptEnabled = false
+                        setBackgroundColor(android.graphics.Color.WHITE)
+                        webViewClient = WebViewClient()
+                        val html = when (page) {
+                            "about" -> aboutHtml()
+                            "privacy" -> privacyHtml()
+                            "license" -> licenseHtml()
+                            else -> "<p>...</p>"
+                        }
+                        loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -117,17 +135,6 @@ private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutSty
     "</ul>" +
     "<h2>版本</h2><p>1.0.0</p>" +
     "<h2>开源</h2><p><a href=\"https://github.com/ccota666/Smallai\">github.com/ccota666/Smallai</a></p>" +
-    "</body></html>"
-
-private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<div style=\"position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;\">" +
-    "<p style=\"font-size:17px;line-height:2.2;margin:0;\">" +
-    "MiMo-V2.6-Pro<br/>" +
-    "MiMo-V2.6-Flash<br/>" +
-    "DeepSeek-V4.1-Flash<br/>" +
-    "<span style=\"color:#2F6FED;\">MiMo Desktop</span><br/>" +
-    "<span style=\"color:#2F6FED;\">DeepSeek Harness</span><br/>" +
-    "ccota</p></div>" +
     "</body></html>"
 
 private fun privacyHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
