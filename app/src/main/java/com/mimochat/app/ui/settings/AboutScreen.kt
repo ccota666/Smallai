@@ -120,7 +120,7 @@ private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutSty
     "</body></html>"
 
 private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<div style=\"display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;\">" +
+    "<div style=\"position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;\">" +
     "<p style=\"font-size:17px;line-height:2.2;margin:0;\">" +
     "MiMo-V2.6-Pro<br/>" +
     "MiMo-V2.6-Flash<br/>" +
