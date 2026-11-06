@@ -110,20 +110,21 @@ private fun aboutHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutSty
     "<p>适配 MiMo API 的 Android AI 聊天应用，支持多模型对话、本地智能体执行、屏幕问答。</p>" +
     "<h2>特性</h2>" +
     "<ul>" +
-    "<li>多模型对话（MiMo API），Markdown/公式/图表渲染</li>" +
+    "<li>多模型对话，Markdown/公式/图表渲染</li>" +
     "<li>智能体模式：本地 MiMoCode 执行任务，实时展示过程</li>" +
     "<li>屏幕问答：悬浮球截屏提问，通知返回答案</li>" +
     "<li>隐私优先：无隐藏提示词，数据本地存储</li>" +
     "</ul>" +
     "<h2>版本</h2><p>1.0.0</p>" +
+    "<h2>开源</h2><p><a href=\"https://github.com/ccota666/Smallai\">github.com/ccota666/Smallai</a></p>" +
     "</body></html>"
 
 private fun authorHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
-    "<h1>软件作者</h1>" +
-    "<p>ccota@bilibili</p>" +
-    "<h2>致谢</h2>" +
-    "<p>开发过程使用了 DeepSeek Harness、MiMo Code 辅助开发</p>" +
-    "<h2>开源</h2><p><a href=\"https://github.com/ccota666/Smallai\">github.com/ccota666/Smallai</a></p>" +
+    "<div style=\"text-align:center;padding-top:60px;\">" +
+    "<p style=\"font-size:18px;line-height:2.2;\">" +
+    "MiMo-V2.6-Pro<br/>MiMo-V2.6-Flash<br/>DeepSeek-V4.1-Flash<br/>ccota</p></div>" +
+    "<div style=\"position:fixed;bottom:20px;left:0;right:0;text-align:center;\">" +
+    "<p style=\"color:#999;font-size:12px;\">智能体：MiMo Desktop、DeepSeek Harness</p></div>" +
     "</body></html>"
 
 private fun privacyHtml(): String = "<html><head><meta charset=\"utf-8\">$aboutStyle</head><body>" +
